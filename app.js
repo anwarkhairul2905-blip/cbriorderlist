@@ -544,6 +544,17 @@ function renderAdminMetrics() {
   orderCountLabel.textContent = `${orderCount} order${orderCount === 1 ? "" : "s"}`;
 }
 
+function saveAdminSettings() {
+  return apiRequest("/api/settings", {
+    method: "PATCH",
+    body: JSON.stringify({
+      orderDate: adminOrderDate.value || DEFAULT_SETTINGS.orderDate,
+      dailyLimit: Math.max(Number(adminPackLimit.value || DEFAULT_SETTINGS.dailyLimit), totalPacks()),
+      ordersOpen: adminOrdersOpen.checked,
+    }),
+  }).then(refreshState).then(render);
+}
+
 function renderSalesReports() {
   const anchorDate = state.settings.orderDate || new Date().toISOString().slice(0, 10);
   const weekRange = weekRangeFor(anchorDate);
@@ -709,7 +720,7 @@ paymentInputs.forEach((input) => {
 
 adminOrdersOpen.addEventListener("change", () => {
   state.settings.ordersOpen = adminOrdersOpen.checked;
-  render();
+  saveAdminSettings().catch((error) => window.alert(error.message));
 });
 
 receiptUpload.addEventListener("change", verifyReceiptImage);
@@ -776,14 +787,7 @@ form.addEventListener("submit", async (event) => {
 
 settingsForm.addEventListener("submit", (event) => {
   event.preventDefault();
-  apiRequest("/api/settings", {
-    method: "PATCH",
-    body: JSON.stringify({
-      orderDate: adminOrderDate.value || DEFAULT_SETTINGS.orderDate,
-      dailyLimit: Math.max(Number(adminPackLimit.value || DEFAULT_SETTINGS.dailyLimit), totalPacks()),
-      ordersOpen: adminOrdersOpen.checked,
-    }),
-  }).then(refreshState).then(render).catch((error) => window.alert(error.message));
+  saveAdminSettings().catch((error) => window.alert(error.message));
 });
 
 ordersList.addEventListener("change", (event) => {
