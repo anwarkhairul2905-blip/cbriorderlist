@@ -6,7 +6,8 @@ const crypto = require("crypto");
 const ROOT_DIR = __dirname;
 const DATA_DIR = path.join(ROOT_DIR, "data");
 const STORE_PATH = path.join(DATA_DIR, "store.json");
-const PORT = Number(process.env.PORT || 3000);
+const PORT = Number(process.env.PORT || 8788);
+const HOST = process.env.HOST || (process.env.PORT ? "0.0.0.0" : "127.0.0.1");
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "ryna2026";
 const SESSION_COOKIE = "nasi_admin_session";
 const RECEIPT_PREPAY_DAYS = 7;
@@ -502,8 +503,8 @@ async function start() {
       }
     });
   });
-  server.listen(PORT, () => {
-    console.log(`Nasi lemak server listening on http://127.0.0.1:${PORT}`);
+  server.listen(PORT, HOST, () => {
+    console.log(`Nasi lemak server listening on http://${HOST}:${PORT}`);
   });
 }
 
