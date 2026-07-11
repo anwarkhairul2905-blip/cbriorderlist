@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Cart by Ryna Ismail Orders</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="page-shell">
+    <section class="hero">
+      <div class="brand-block">
+        <img class="brand-logo" src="assets/cart-by-ryna-logo.png" alt="Cart by Ryna Ismail">
+        <div>
+          <p class="kicker">Abu Dhabi weekly orders</p>
+          <h1>Nasi Lemak</h1>
+          <p class="intro">Place your order below. Payment is available by cash or bank transfer.</p>
+        </div>
+      </div>
+      <div class="status-pill" id="orderStatus">Orders open</div>
+    </section>
+
+    <section class="view active" id="customerView">
+      <section class="product-gallery" aria-label="Nasi lemak photos">
+        <figure class="product-photo large">
+          <img src="assets/packed-nasi-lemak.jpg" alt="Packed nasi lemak by Cart by Ryna Ismail">
+        </figure>
+        <figure class="product-photo">
+          <img src="assets/nasi-lemak-plate.jpeg" alt="Nasi lemak with egg, sambal, anchovies, peanuts, and cucumber">
+        </figure>
+      </section>
+
+      <div class="capacity-strip">
+        <div>
+          <span class="metric-label">Available today</span>
+          <strong id="remainingPacks">120 packs left</strong>
+        </div>
+        <div>
+          <span class="metric-label">Ordered</span>
+          <strong id="orderedPacks">0 / 120</strong>
+        </div>
+      </div>
+
+      <section class="order-layout">
+        <form class="order-form" id="orderForm">
+          <div class="field">
+            <label for="customerName">Name</label>
+            <input id="customerName" name="customerName" type="text" autocomplete="name" placeholder="Your name" required>
+          </div>
+
+          <div class="field">
+            <label for="packCount">How many packs?</label>
+            <div class="quantity-control">
+              <button type="button" class="icon-button" id="decreasePacks" aria-label="Decrease packs">-</button>
+              <input id="packCount" name="packCount" type="number" min="1" max="120" value="1" required>
+              <button type="button" class="icon-button" id="increasePacks" aria-label="Increase packs">+</button>
+            </div>
+            <p class="hint">AED <span id="unitPrice">10</span> per pack. Maximum available for this order day: <span id="dailyLimit">120</span> packs.</p>
+          </div>
+
+          <div class="field">
+            <label for="pickupTime">Pickup time</label>
+            <select id="pickupTime" name="pickupTime" required>
+              <option value="">Choose pickup time</option>
+              <option value="8:00 AM - 9:00 AM">8:00 AM - 9:00 AM</option>
+              <option value="9:00 AM - 10:00 AM">9:00 AM - 10:00 AM</option>
+              <option value="10:00 AM - 11:00 AM">10:00 AM - 11:00 AM</option>
+              <option value="11:00 AM - 12:00 PM">11:00 AM - 12:00 PM</option>
+              <option value="6:00 PM - 7:00 PM">6:00 PM - 7:00 PM</option>
+              <option value="7:00 PM - 8:00 PM">7:00 PM - 8:00 PM</option>
+            </select>
+            <p class="hint">Pickup windows are morning 8:00 AM-12:00 PM and evening 6:00 PM-8:00 PM.</p>
+          </div>
+
+          <fieldset class="field payment-field">
+            <legend>Payment method</legend>
+            <label class="choice">
+              <input type="radio" name="paymentMethod" value="Cash" checked>
+              <span>Cash</span>
+            </label>
+            <label class="choice">
+              <input type="radio" name="paymentMethod" value="Bank transfer">
+              <span>Bank transfer</span>
+            </label>
+          </fieldset>
+
+          <div class="bank-box" id="bankDetails" hidden>
+            <p class="bank-title">Bank transfer details</p>
+            <div class="bank-row">
+              <span>Account holder</span>
+              <strong id="accountHolderValue">MUHAMAD KHAIRULANWAR</strong>
+            </div>
+            <div class="bank-row">
+              <span>Bank</span>
+              <strong id="bankNameValue">ADIB</strong>
+            </div>
+            <div class="bank-row">
+              <span>IBAN</span>
+              <strong id="ibanValue">To be provided</strong>
+            </div>
+            <div class="bank-row">
+              <span>Account number</span>
+              <strong id="accountValue">To be provided</strong>
+            </div>
+            <label class="receipt-upload" for="receiptUpload">
+              <span>Upload payment receipt</span>
+              <input id="receiptUpload" type="file" accept="image/*">
+            </label>
+            <p class="receipt-status" id="receiptStatus">Receipt required before placing a bank transfer order.</p>
+            <div class="receipt-checks" id="receiptChecks" hidden>
+              <span id="receiptAccountCheck">Account not checked</span>
+              <span id="receiptDateCheck">Date not checked</span>
+            </div>
+          </div>
+
+          <button class="submit-button" type="submit" id="submitOrderButton">Place order</button>
+        </form>
+
+        <aside class="summary-panel">
+          <p class="panel-label">Order summary</p>
+          <div class="summary-card">
+            <div class="summary-row">
+              <span>Name</span>
+              <strong id="summaryName">Not entered</strong>
+            </div>
+            <div class="summary-row">
+              <span>Packs</span>
+              <strong id="summaryPacks">1</strong>
+            </div>
+            <div class="summary-row">
+              <span>Pickup</span>
+              <strong id="summaryPickup">Not selected</strong>
+            </div>
+            <div class="summary-row total-row">
+              <span>Total</span>
+              <strong id="summaryTotal">AED 10</strong>
+            </div>
+            <div class="summary-row">
+              <span>Payment</span>
+              <strong id="summaryPayment">Cash</strong>
+            </div>
+          </div>
+
+          <div class="confirmation" id="confirmation" hidden>
+            <p class="confirmation-title">Order received</p>
+            <p id="confirmationText"></p>
+            <div class="pickup-card">
+              <p class="pickup-title">Self pickup location</p>
+              <p class="pickup-address" id="pickupAddress">817, Noya Viva, YN 07, Yas Island, Abu Dhabi</p>
+              <iframe
+                class="pickup-map"
+                title="Pickup location map"
+                loading="lazy"
+                referrerpolicy="no-referrer-when-downgrade"
+                src="https://www.google.com/maps?q=817%2C%20Noya%20Viva%2C%20YN%2007%2C%20Yas%20Island%2C%20Abu%20Dhabi&output=embed">
+              </iframe>
+              <div class="nav-actions">
+                <a id="googleMapsLink" target="_blank" rel="noopener noreferrer">Google Maps</a>
+                <a id="wazeLink" target="_blank" rel="noopener noreferrer">Waze</a>
+                <a id="appleMapsLink" target="_blank" rel="noopener noreferrer">Apple Maps</a>
+              </div>
+            </div>
+          </div>
+        </aside>
+      </section>
+    </section>
+
+    <section class="view" id="adminView">
+      <section class="admin-grid">
+        <form class="admin-panel" id="settingsForm">
+          <p class="panel-label">Order settings</p>
+          <div class="field">
+            <label for="adminOrderDate">Order day</label>
+            <input id="adminOrderDate" type="date">
+          </div>
+          <div class="field">
+            <label for="adminPackLimit">Pack limit</label>
+            <input id="adminPackLimit" type="number" min="1" max="200" value="120">
+          </div>
+          <label class="switch-row">
+            <input id="adminOrdersOpen" type="checkbox" checked>
+            <span>Accepting orders</span>
+          </label>
+          <button class="submit-button" type="submit">Save settings</button>
+        </form>
+
+        <section class="admin-panel">
+          <p class="panel-label">Today</p>
+          <div class="admin-metrics">
+            <div>
+              <span class="metric-label">Total packs</span>
+              <strong id="adminTotalPacks">0</strong>
+            </div>
+            <div>
+              <span class="metric-label">Paid packs</span>
+              <strong id="adminPaidPacks">0</strong>
+            </div>
+            <div>
+              <span class="metric-label">Unpaid packs</span>
+              <strong id="adminUnpaidPacks">0</strong>
+            </div>
+            <div>
+              <span class="metric-label">Sales total</span>
+              <strong id="adminSalesTotal">AED 0</strong>
+            </div>
+          </div>
+          <button class="secondary-button" type="button" id="clearOrdersButton">Clear orders</button>
+        </section>
+      </section>
+
+      <section class="reports-panel">
+        <div class="orders-header">
+          <p class="panel-label">Sales reports</p>
+          <span>Based on order date</span>
+        </div>
+        <div class="reports-grid">
+          <article class="report-card">
+            <p class="report-title">This week</p>
+            <div class="report-metrics">
+              <div>
+                <span class="metric-label">Orders</span>
+                <strong id="weeklyOrderCount">0</strong>
+              </div>
+              <div>
+                <span class="metric-label">Packs</span>
+                <strong id="weeklyPackCount">0</strong>
+              </div>
+              <div>
+                <span class="metric-label">Sales</span>
+                <strong id="weeklySalesTotal">AED 0</strong>
+              </div>
+              <div>
+                <span class="metric-label">Paid</span>
+                <strong id="weeklyPaidTotal">AED 0</strong>
+              </div>
+              <div>
+                <span class="metric-label">Unpaid</span>
+                <strong id="weeklyUnpaidTotal">AED 0</strong>
+              </div>
+            </div>
+          </article>
+
+          <article class="report-card">
+            <p class="report-title">This month</p>
+            <div class="report-metrics">
+              <div>
+                <span class="metric-label">Orders</span>
+                <strong id="monthlyOrderCount">0</strong>
+              </div>
+              <div>
+                <span class="metric-label">Packs</span>
+                <strong id="monthlyPackCount">0</strong>
+              </div>
+              <div>
+                <span class="metric-label">Sales</span>
+                <strong id="monthlySalesTotal">AED 0</strong>
+              </div>
+              <div>
+                <span class="metric-label">Paid</span>
+                <strong id="monthlyPaidTotal">AED 0</strong>
+              </div>
+              <div>
+                <span class="metric-label">Unpaid</span>
+                <strong id="monthlyUnpaidTotal">AED 0</strong>
+              </div>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="orders-panel">
+        <div class="orders-header">
+          <p class="panel-label">Orders</p>
+          <span id="orderCountLabel">0 orders</span>
+        </div>
+        <div class="orders-list" id="ordersList"></div>
+      </section>
+    </section>
+  </main>
+
+  <button class="admin-access-button" id="adminAccessButton" type="button">Admin</button>
+
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
