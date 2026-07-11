@@ -757,7 +757,7 @@ form.addEventListener("submit", async (event) => {
     await refreshState();
 
     const paymentNote = paymentMethod === "Bank transfer"
-      ? "Please make the bank transfer using the details shown."
+      ? "Payment receipt received."
       : "Please prepare cash payment.";
     confirmationText.textContent = `${order.name}, your order is ${packs} pack${packs === 1 ? "" : "s"} of nasi lemak. Total: ${formatAed(packs * UNIT_PRICE_AED)}. Pickup time: ${order.pickupTime}. Payment method: ${order.paymentMethod}. ${paymentNote} Pickup is self pickup at the location below.`;
     confirmation.hidden = false;
