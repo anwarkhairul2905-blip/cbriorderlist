@@ -187,6 +187,29 @@ h1 {
   object-fit: cover;
 }
 
+.dietary-notice {
+  margin-top: 14px;
+  border: 1px solid rgba(200, 147, 45, 0.34);
+  border-radius: 8px;
+  background: rgba(200, 147, 45, 0.1);
+  color: var(--ink);
+  padding: 14px 16px;
+}
+
+.dietary-notice strong {
+  display: block;
+  color: #7a5515;
+  font-size: 0.9rem;
+  font-weight: 950;
+  margin-bottom: 5px;
+}
+
+.dietary-notice p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
 .capacity-strip {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
