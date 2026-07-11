@@ -331,6 +331,11 @@ function clampPackCount(value) {
   return Math.min(Math.max(number, 1), max);
 }
 
+function selectedPackCount() {
+  if (String(packInput.value).trim() === "") return 0;
+  return clampPackCount(packInput.value);
+}
+
 function formatTime(value) {
   return new Intl.DateTimeFormat("en-AE", {
     hour: "2-digit",
@@ -413,17 +418,17 @@ function openAdminAccess() {
 
 function updateSummary() {
   const name = nameInput.value.trim();
-  const packs = clampPackCount(packInput.value);
+  const packs = selectedPackCount();
   const pickupTime = pickupTimeInput.value;
   const payment = selectedPaymentMethod();
   const bankTransfer = payment === "Bank transfer";
 
-  if (String(packs) !== packInput.value) {
+  if (packs > 0 && String(packs) !== packInput.value) {
     packInput.value = String(packs);
   }
 
   summaryName.textContent = name || "Not entered";
-  summaryPacks.textContent = String(packs);
+  summaryPacks.textContent = packs > 0 ? String(packs) : "Not selected";
   summaryPickup.textContent = pickupTime || "Not selected";
   summaryTotal.textContent = formatAed(packs * UNIT_PRICE_AED);
   summaryPayment.textContent = payment;
@@ -604,12 +609,14 @@ packInput.addEventListener("input", updateSummary);
 pickupTimeInput.addEventListener("change", updateSummary);
 
 decreaseButton.addEventListener("click", () => {
-  packInput.value = String(Math.max(clampPackCount(packInput.value) - 1, 1));
+  const current = selectedPackCount();
+  packInput.value = current <= 1 ? "" : String(current - 1);
   updateSummary();
 });
 
 increaseButton.addEventListener("click", () => {
-  packInput.value = String(clampPackCount(Number(packInput.value) + 1));
+  const current = selectedPackCount();
+  packInput.value = String(clampPackCount(current + 1));
   updateSummary();
 });
 

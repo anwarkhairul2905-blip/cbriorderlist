@@ -52,7 +52,7 @@
             <label for="packCount">How many packs?</label>
             <div class="quantity-control">
               <button type="button" class="icon-button" id="decreasePacks" aria-label="Decrease packs">-</button>
-              <input id="packCount" name="packCount" type="number" min="1" max="120" value="1" required>
+              <input id="packCount" name="packCount" type="number" min="1" max="120" placeholder="0" required>
               <button type="button" class="icon-button" id="increasePacks" aria-label="Increase packs">+</button>
             </div>
             <p class="hint">AED <span id="unitPrice">10</span> per pack. Maximum available for this order day: <span id="dailyLimit">120</span> packs.</p>
@@ -125,7 +125,7 @@
             </div>
             <div class="summary-row">
               <span>Packs</span>
-              <strong id="summaryPacks">1</strong>
+              <strong id="summaryPacks">Not selected</strong>
             </div>
             <div class="summary-row">
               <span>Pickup</span>
@@ -133,7 +133,7 @@
             </div>
             <div class="summary-row total-row">
               <span>Total</span>
-              <strong id="summaryTotal">AED 10</strong>
+              <strong id="summaryTotal">AED 0</strong>
             </div>
             <div class="summary-row">
               <span>Payment</span>
