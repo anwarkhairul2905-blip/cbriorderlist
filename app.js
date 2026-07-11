@@ -1,5 +1,3 @@
-const STORAGE_KEY = "cart-by-ryna-orders-v1";
-const ADMIN_PASSWORD = "ryna2026";
 const MAX_RECEIPT_BYTES = 4 * 1024 * 1024;
 const UNIT_PRICE_AED = 10;
 const RECEIPT_PREPAY_DAYS = 7;
@@ -19,7 +17,7 @@ const DEFAULT_SETTINGS = {
   accountNumber: EXPECTED_ACCOUNT_NUMBER,
 };
 
-const state = loadState();
+let state = createInitialState();
 const receiptVerification = {
   status: "idle",
   accountMatched: false,
@@ -94,29 +92,59 @@ googleMapsLink.href = `https://www.google.com/maps/search/?api=1&query=${PICKUP_
 wazeLink.href = `https://waze.com/ul?q=${PICKUP_QUERY}&navigate=yes`;
 appleMapsLink.href = `https://maps.apple.com/?q=${PICKUP_QUERY}`;
 
-function loadState() {
-  try {
-    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
-    if (!saved || typeof saved !== "object") throw new Error("Invalid saved state");
-    const settings = { ...DEFAULT_SETTINGS, ...(saved.settings || {}) };
-    if (!settings.iban || settings.iban === "To be provided") settings.iban = EXPECTED_IBAN;
-    if (!settings.accountNumber || settings.accountNumber === "To be provided") settings.accountNumber = EXPECTED_ACCOUNT_NUMBER;
-    settings.accountHolder = EXPECTED_ACCOUNT_HOLDER;
-    settings.bankName = EXPECTED_BANK_NAME;
-    return {
-      settings,
-      orders: Array.isArray(saved.orders) ? saved.orders : [],
-    };
-  } catch {
-    return {
-      settings: { ...DEFAULT_SETTINGS },
-      orders: [],
-    };
-  }
+function createInitialState() {
+  return {
+    settings: { ...DEFAULT_SETTINGS },
+    orders: [],
+    summary: {
+      orderCount: 0,
+      totalPacks: 0,
+      paidPacks: 0,
+      unpaidPacks: 0,
+      remainingPacks: DEFAULT_SETTINGS.dailyLimit,
+    },
+  };
 }
 
-function saveState() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+function applyServerState(payload = {}) {
+  const settings = { ...DEFAULT_SETTINGS, ...(payload.settings || {}) };
+  settings.accountHolder = EXPECTED_ACCOUNT_HOLDER;
+  settings.bankName = EXPECTED_BANK_NAME;
+  settings.iban = EXPECTED_IBAN;
+  settings.accountNumber = EXPECTED_ACCOUNT_NUMBER;
+  state.settings = settings;
+  state.orders = Array.isArray(payload.orders) ? payload.orders : [];
+  state.summary = {
+    orderCount: Number(payload.summary?.orderCount || state.orders.length || 0),
+    totalPacks: Number(payload.summary?.totalPacks || 0),
+    paidPacks: Number(payload.summary?.paidPacks || 0),
+    unpaidPacks: Number(payload.summary?.unpaidPacks || 0),
+    remainingPacks: Number(payload.summary?.remainingPacks || settings.dailyLimit),
+  };
+}
+
+async function apiRequest(pathname, options = {}) {
+  const response = await fetch(pathname, {
+    credentials: "same-origin",
+    headers: {
+      "Content-Type": "application/json",
+      ...(options.headers || {}),
+    },
+    ...options,
+  });
+  const text = await response.text();
+  const payload = text ? JSON.parse(text) : {};
+  if (!response.ok) {
+    const message = payload?.error || `Request failed: ${response.status}`;
+    throw new Error(message);
+  }
+  return payload;
+}
+
+async function refreshState() {
+  const payload = await apiRequest("/api/state", { method: "GET", headers: {} });
+  applyServerState(payload);
+  return payload;
 }
 
 function selectedPaymentMethod() {
@@ -303,13 +331,13 @@ function readReceiptFile() {
 }
 
 function totalPacks() {
-  return state.orders.reduce((total, order) => total + Number(order.packs || 0), 0);
+  return Number(state.summary?.totalPacks ?? state.orders.reduce((total, order) => total + Number(order.packs || 0), 0));
 }
 
 function paidPacks() {
-  return state.orders
+  return Number(state.summary?.paidPacks ?? state.orders
     .filter((order) => order.paid)
-    .reduce((total, order) => total + Number(order.packs || 0), 0);
+    .reduce((total, order) => total + Number(order.packs || 0), 0));
 }
 
 function orderTotal(order) {
@@ -321,7 +349,7 @@ function formatAed(amount) {
 }
 
 function remainingCapacity() {
-  return Math.max(Number(state.settings.dailyLimit || 0) - totalPacks(), 0);
+  return Number(state.summary?.remainingPacks ?? Math.max(Number(state.settings.dailyLimit || 0) - totalPacks(), 0));
 }
 
 function clampPackCount(value) {
@@ -402,18 +430,28 @@ function updateTabs(targetId) {
   adminAccessButton.textContent = targetId === "adminView" ? "Customer" : "Admin";
 }
 
-function openAdminAccess() {
+function isEditingAdminSettings() {
+  return settingsForm.contains(document.activeElement);
+}
+
+async function openAdminAccess() {
   if (document.getElementById("adminView").classList.contains("active")) {
+    await apiRequest("/api/admin/logout", { method: "POST", headers: {} });
     updateTabs("customerView");
+    await refreshState();
+    render();
     return;
   }
 
   const password = window.prompt("Admin password");
-  if (password === ADMIN_PASSWORD) {
-    updateTabs("adminView");
-  } else if (password !== null) {
-    window.alert("Incorrect password");
-  }
+  if (password === null) return;
+  await apiRequest("/api/admin/login", {
+    method: "POST",
+    body: JSON.stringify({ password }),
+  });
+  updateTabs("adminView");
+  await refreshState();
+  render();
 }
 
 function updateSummary() {
@@ -498,7 +536,8 @@ function renderAdminMetrics() {
   adminPaidPacks.textContent = String(paid);
   adminUnpaidPacks.textContent = String(total - paid);
   adminSalesTotal.textContent = formatAed(state.orders.reduce((sum, order) => sum + orderTotal(order), 0));
-  orderCountLabel.textContent = `${state.orders.length} order${state.orders.length === 1 ? "" : "s"}`;
+  const orderCount = Number(state.summary?.orderCount ?? state.orders.length);
+  orderCountLabel.textContent = `${orderCount} order${orderCount === 1 ? "" : "s"}`;
 }
 
 function renderSalesReports() {
@@ -582,7 +621,7 @@ function renderOrders() {
 
 function render() {
   renderCapacity();
-  renderSettings();
+  if (!isEditingAdminSettings()) renderSettings();
   renderAdminMetrics();
   renderSalesReports();
   renderOrders();
@@ -602,7 +641,9 @@ tabButtons.forEach((button) => {
   button.addEventListener("click", () => updateTabs(button.dataset.view));
 });
 
-adminAccessButton.addEventListener("click", openAdminAccess);
+adminAccessButton.addEventListener("click", () => {
+  openAdminAccess().catch((error) => window.alert(error.message));
+});
 
 nameInput.addEventListener("input", updateSummary);
 packInput.addEventListener("input", updateSummary);
@@ -630,68 +671,72 @@ form.addEventListener("submit", async (event) => {
   event.preventDefault();
   updateSummary();
 
-  const available = remainingCapacity();
-  if (!state.settings.ordersOpen || available <= 0) return;
-  if (!form.reportValidity()) return;
-  if (selectedPaymentMethod() === "Bank transfer" && (!receiptFileValid() || !receiptVerified())) {
-    receiptStatus.textContent = "Please upload a receipt that verifies the account/IBAN and transaction date first.";
-    receiptStatus.classList.remove("ready");
-    return;
-  }
+  try {
+    const available = remainingCapacity();
+    if (!state.settings.ordersOpen || available <= 0) return;
+    if (!form.reportValidity()) return;
+    if (selectedPaymentMethod() === "Bank transfer" && (!receiptFileValid() || !receiptVerified())) {
+      receiptStatus.textContent = "Please upload a receipt that verifies the account/IBAN and transaction date first.";
+      receiptStatus.classList.remove("ready");
+      return;
+    }
 
-  const packs = clampPackCount(packInput.value);
-  if (packs > available) {
-    confirmationText.textContent = `Only ${available} pack${available === 1 ? "" : "s"} left. Please reduce the quantity.`;
+    const packs = clampPackCount(packInput.value);
+    if (packs > available) {
+      confirmationText.textContent = `Only ${available} pack${available === 1 ? "" : "s"} left. Please reduce the quantity.`;
+      confirmation.hidden = false;
+      return;
+    }
+
+    const paymentMethod = selectedPaymentMethod();
+    let receipt = null;
+    if (paymentMethod === "Bank transfer") {
+      receipt = await readReceiptFile();
+      receipt.verified = true;
+      receipt.accountMatched = receiptVerification.accountMatched;
+      receipt.dateMatched = receiptVerification.dateMatched;
+      receipt.transactionDate = receiptVerification.transactionDate;
+      receipt.normalizedTransactionDate = receiptVerification.normalizedTransactionDate;
+      receipt.ocrText = receiptVerification.text;
+    }
+
+    const order = {
+      name: nameInput.value.trim(),
+      packs,
+      pickupTime: pickupTimeInput.value,
+      paymentMethod,
+      receipt,
+    };
+
+    await apiRequest("/api/orders", {
+      method: "POST",
+      body: JSON.stringify(order),
+    });
+    await refreshState();
+
+    const paymentNote = paymentMethod === "Bank transfer"
+      ? "Please make the bank transfer using the details shown."
+      : "Please prepare cash payment.";
+    confirmationText.textContent = `${order.name}, your order is ${packs} pack${packs === 1 ? "" : "s"} of nasi lemak. Total: ${formatAed(packs * UNIT_PRICE_AED)}. Pickup time: ${order.pickupTime}. Payment method: ${order.paymentMethod}. ${paymentNote} Pickup is self pickup at the location below.`;
     confirmation.hidden = false;
-    return;
+    form.reset();
+    resetReceiptVerification();
+    render();
+  } catch (error) {
+    window.alert(error.message);
   }
-
-  const paymentMethod = selectedPaymentMethod();
-  let receipt = null;
-  if (paymentMethod === "Bank transfer") {
-    receipt = await readReceiptFile();
-    receipt.verified = true;
-    receipt.accountMatched = receiptVerification.accountMatched;
-    receipt.dateMatched = receiptVerification.dateMatched;
-    receipt.transactionDate = receiptVerification.transactionDate;
-    receipt.normalizedTransactionDate = receiptVerification.normalizedTransactionDate;
-    receipt.ocrText = receiptVerification.text;
-  }
-
-  const order = {
-    id: `ORD-${Date.now()}`,
-    name: nameInput.value.trim(),
-    packs,
-    unitPrice: UNIT_PRICE_AED,
-    totalAmount: packs * UNIT_PRICE_AED,
-    orderDate: state.settings.orderDate,
-    pickupTime: pickupTimeInput.value,
-    paymentMethod,
-    receipt,
-    paid: paymentMethod === "Bank transfer" && receiptVerified(),
-    createdAt: new Date().toISOString(),
-  };
-
-  state.orders.unshift(order);
-  saveState();
-
-  const paymentNote = order.paymentMethod === "Bank transfer"
-    ? "Please make the bank transfer using the details shown."
-    : "Please prepare cash payment.";
-  confirmationText.textContent = `${order.name}, your order is ${order.packs} pack${order.packs === 1 ? "" : "s"} of nasi lemak. Total: ${formatAed(order.totalAmount)}. Pickup time: ${order.pickupTime}. Payment method: ${order.paymentMethod}. ${paymentNote} Pickup is self pickup at the location below.`;
-  confirmation.hidden = false;
-  form.reset();
-  resetReceiptVerification();
-  render();
 });
 
 settingsForm.addEventListener("submit", (event) => {
   event.preventDefault();
-  state.settings.orderDate = adminOrderDate.value || DEFAULT_SETTINGS.orderDate;
-  state.settings.dailyLimit = Math.max(Number(adminPackLimit.value || DEFAULT_SETTINGS.dailyLimit), totalPacks());
-  state.settings.ordersOpen = adminOrdersOpen.checked;
-  saveState();
-  render();
+  apiRequest("/api/settings", {
+    method: "PATCH",
+    body: JSON.stringify({
+      orderDate: adminOrderDate.value || DEFAULT_SETTINGS.orderDate,
+      dailyLimit: Math.max(Number(adminPackLimit.value || DEFAULT_SETTINGS.dailyLimit), totalPacks()),
+      ordersOpen: adminOrdersOpen.checked,
+    }),
+  }).then(refreshState).then(render).catch((error) => window.alert(error.message));
 });
 
 ordersList.addEventListener("change", (event) => {
@@ -701,23 +746,31 @@ ordersList.addEventListener("change", (event) => {
   const card = event.target.closest("[data-order-id]");
   const order = state.orders.find((item) => item.id === card?.dataset.orderId);
   if (!order) return;
-  if (paidCheckbox) order.paid = paidCheckbox.checked;
-  if (takenCheckbox) order.taken = takenCheckbox.checked;
-  saveState();
-  render();
+  apiRequest(`/api/orders/${encodeURIComponent(order.id)}`, {
+    method: "PATCH",
+    body: JSON.stringify({
+      paid: paidCheckbox ? paidCheckbox.checked : undefined,
+      taken: takenCheckbox ? takenCheckbox.checked : undefined,
+    }),
+  }).then(refreshState).then(render).catch((error) => window.alert(error.message));
 });
 
 clearOrdersButton.addEventListener("click", () => {
   const confirmed = window.confirm("Clear all orders for this browser?");
   if (!confirmed) return;
   const password = window.prompt("Enter admin password to clear orders");
-  if (password !== ADMIN_PASSWORD) {
-    if (password !== null) window.alert("Incorrect password. Orders were not cleared.");
-    return;
-  }
-  state.orders = [];
-  saveState();
-  render();
+  if (password === null) return;
+  apiRequest("/api/admin/clear", {
+    method: "POST",
+    body: JSON.stringify({ password }),
+  }).then(refreshState).then(render).catch((error) => window.alert(error.message));
 });
 
-render();
+(async () => {
+  try {
+    await refreshState();
+  } catch (error) {
+    console.warn("Using local defaults until the server is available:", error);
+  }
+  render();
+})();

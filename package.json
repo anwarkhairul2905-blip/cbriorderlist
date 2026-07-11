@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
+    "start": "node server.js",
     "build": "rm -rf dist && mkdir -p dist/server && cp index.html styles.css app.js dist/ && cp -R assets .openai dist/ && cp server/index.js dist/server/index.js"
   }
 }
