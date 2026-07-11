@@ -85,6 +85,10 @@ const googleMapsLink = document.getElementById("googleMapsLink");
 const wazeLink = document.getElementById("wazeLink");
 const appleMapsLink = document.getElementById("appleMapsLink");
 const unitPrice = document.getElementById("unitPrice");
+const receiptDialog = document.getElementById("receiptDialog");
+const receiptDialogTitle = document.getElementById("receiptDialogTitle");
+const receiptDialogImage = document.getElementById("receiptDialogImage");
+const receiptDialogMeta = document.getElementById("receiptDialogMeta");
 
 unitPrice.textContent = String(UNIT_PRICE_AED);
 pickupAddress.textContent = PICKUP_ADDRESS;
@@ -600,7 +604,7 @@ function renderOrders() {
         <p>${order.packs} pack${order.packs === 1 ? "" : "s"} · ${escapeHtml(order.paymentMethod)} · ${formatAed(orderTotal(order))}</p>
         <p>Pickup: ${escapeHtml(order.pickupTime || "Not selected")}</p>
         ${order.receipt?.transactionDate ? `<p>Receipt date: ${escapeHtml(order.receipt.transactionDate)}</p>` : ""}
-        ${order.receipt?.dataUrl ? `<a class="receipt-link" href="${escapeHtml(order.receipt.dataUrl)}" target="_blank" rel="noopener noreferrer">Open receipt</a>` : ""}
+        ${order.receipt?.dataUrl ? `<button class="receipt-link" type="button" data-receipt-open>Open receipt</button>` : ""}
         <small>${formatTime(order.createdAt)}</small>
       </div>
       <div class="order-actions">
@@ -635,6 +639,44 @@ function escapeHtml(value) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
+}
+
+function closeReceiptPreview() {
+  if (receiptDialog?.open && typeof receiptDialog.close === "function") {
+    receiptDialog.close();
+  }
+  if (receiptDialogImage) receiptDialogImage.src = "";
+  if (receiptDialogTitle) receiptDialogTitle.textContent = "Receipt preview";
+  if (receiptDialogMeta) receiptDialogMeta.textContent = "";
+}
+
+function openReceiptPreview(order) {
+  const receipt = order?.receipt;
+  const dataUrl = String(receipt?.dataUrl || "");
+  if (!dataUrl) return;
+
+  if (receiptDialogTitle) {
+    receiptDialogTitle.textContent = `Receipt preview - ${order.name || "Order"}`;
+  }
+  if (receiptDialogImage) {
+    receiptDialogImage.src = dataUrl;
+    receiptDialogImage.alt = `Receipt for ${order.name || "order"}`;
+  }
+  if (receiptDialogMeta) {
+    const meta = [receipt?.name, receipt?.type, receipt?.size ? `${Math.round(Number(receipt.size) / 1024)} KB` : ""]
+      .filter(Boolean)
+      .join(" · ");
+    receiptDialogMeta.textContent = meta;
+  }
+
+  if (receiptDialog?.showModal && !receiptDialog.open) {
+    receiptDialog.showModal();
+    return;
+  }
+
+  if (receiptDialog) {
+    receiptDialog.open = true;
+  }
 }
 
 tabButtons.forEach((button) => {
@@ -754,6 +796,21 @@ ordersList.addEventListener("change", (event) => {
     }),
   }).then(refreshState).then(render).catch((error) => window.alert(error.message));
 });
+
+ordersList.addEventListener("click", (event) => {
+  const receiptButton = event.target.closest("[data-receipt-open]");
+  if (!receiptButton) return;
+  const card = event.target.closest("[data-order-id]");
+  const order = state.orders.find((item) => item.id === card?.dataset.orderId);
+  if (!order?.receipt?.dataUrl) return;
+  openReceiptPreview(order);
+});
+
+receiptDialog?.addEventListener("click", (event) => {
+  if (event.target === receiptDialog) closeReceiptPreview();
+});
+
+receiptDialog?.addEventListener("close", closeReceiptPreview);
 
 clearOrdersButton.addEventListener("click", () => {
   const confirmed = window.confirm("Clear all orders for this browser?");

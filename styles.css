@@ -673,6 +673,76 @@ input:focus {
   margin: 2px 0 6px;
 }
 
+.receipt-link {
+  background: none;
+  border: 0;
+  cursor: pointer;
+  padding: 0;
+}
+
+.receipt-link:hover {
+  text-decoration: underline;
+}
+
+.receipt-dialog {
+  width: min(92vw, 880px);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 0;
+  background: #fff;
+  box-shadow: 0 28px 80px rgba(15, 23, 15, 0.28);
+}
+
+.receipt-dialog::backdrop {
+  background: rgba(9, 13, 10, 0.58);
+}
+
+.receipt-dialog-frame {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+}
+
+.receipt-dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.receipt-dialog-header strong {
+  color: var(--text);
+  font-size: 1rem;
+}
+
+.receipt-dialog-close {
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #f7f8f7;
+  color: var(--text);
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.receipt-dialog-image {
+  display: block;
+  width: 100%;
+  max-height: min(76vh, 820px);
+  object-fit: contain;
+  background: #f4f5f4;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.receipt-dialog-meta {
+  color: var(--muted);
+  font-size: 0.92rem;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
 .order-card small {
   color: #8b918b;
   font-weight: 750;

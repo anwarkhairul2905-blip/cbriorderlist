@@ -283,6 +283,17 @@
     </section>
   </main>
 
+  <dialog class="receipt-dialog" id="receiptDialog" aria-label="Receipt preview">
+    <form class="receipt-dialog-frame" method="dialog">
+      <div class="receipt-dialog-header">
+        <strong id="receiptDialogTitle">Receipt preview</strong>
+        <button class="icon-button receipt-dialog-close" type="submit" aria-label="Close receipt preview">×</button>
+      </div>
+      <img class="receipt-dialog-image" id="receiptDialogImage" alt="Receipt preview">
+      <div class="receipt-dialog-meta" id="receiptDialogMeta"></div>
+    </form>
+  </dialog>
+
   <button class="admin-access-button" id="adminAccessButton" type="button">Admin</button>
 
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
