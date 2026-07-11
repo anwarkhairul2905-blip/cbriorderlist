@@ -707,6 +707,11 @@ paymentInputs.forEach((input) => {
   input.addEventListener("change", updateSummary);
 });
 
+adminOrdersOpen.addEventListener("change", () => {
+  state.settings.ordersOpen = adminOrdersOpen.checked;
+  render();
+});
+
 receiptUpload.addEventListener("change", verifyReceiptImage);
 
 form.addEventListener("submit", async (event) => {
