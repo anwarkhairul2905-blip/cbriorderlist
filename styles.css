@@ -272,6 +272,10 @@ h1 {
   gap: 9px;
 }
 
+.bean-sprout-field[hidden] {
+  display: none;
+}
+
 label,
 legend,
 .panel-label {
