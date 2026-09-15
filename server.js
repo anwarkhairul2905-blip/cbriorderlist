@@ -13,6 +13,10 @@ const SESSION_COOKIE = "nasi_admin_session";
 const RECEIPT_PREPAY_DAYS = 7;
 const MAX_ORDER_PACKS = 120;
 const MENU_KEYS = new Set(["nasi-lemak", "char-kway-teow"]);
+const MENU_PRICES_AED = {
+  "nasi-lemak": 10,
+  "char-kway-teow": 25,
+};
 
 const DEFAULT_SETTINGS = {
   dailyLimit: 120,
@@ -398,8 +402,8 @@ async function handleCreateOrder(req, res) {
       menuKey: store.settings.activeMenu,
       name: validation.name,
       packs: validation.packs,
-      unitPrice: 10,
-      totalAmount: validation.packs * 10,
+      unitPrice: MENU_PRICES_AED[store.settings.activeMenu],
+      totalAmount: validation.packs * MENU_PRICES_AED[store.settings.activeMenu],
       orderDate: store.settings.orderDate,
       pickupTime: validation.pickupTime,
       paymentMethod: validation.paymentMethod,

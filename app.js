@@ -1,5 +1,8 @@
 const MAX_RECEIPT_BYTES = 4 * 1024 * 1024;
-const UNIT_PRICE_AED = 10;
+const MENU_PRICES_AED = {
+  "nasi-lemak": 10,
+  "char-kway-teow": 25,
+};
 const RECEIPT_PREPAY_DAYS = 7;
 const EXPECTED_ACCOUNT_HOLDER = "MUHAMAD KHAIRULANWAR";
 const EXPECTED_BANK_NAME = "ADIB";
@@ -21,6 +24,7 @@ const DEFAULT_SETTINGS = {
 const MENUS = {
   "nasi-lemak": {
     title: "Nasi Lemak",
+    price: MENU_PRICES_AED["nasi-lemak"],
     intro: "Place your order below. Payment is available by cash or bank transfer.",
     dietary: "Product contains rice, coconut cream, ginger, galangal, shallots, fried anchovies, peanuts, and cucumber. Please refer to your dietary restrictions before consuming.",
     images: ["assets/packed-nasi-lemak.jpg", "assets/nasi-lemak-plate.jpeg"],
@@ -28,6 +32,7 @@ const MENUS = {
   },
   "char-kway-teow": {
     title: "Char Kway Teow",
+    price: MENU_PRICES_AED["char-kway-teow"],
     intro: "Place your order below. Payment is available by cash or bank transfer.",
     dietary: "Please provide the Char Kway Teow ingredients and dietary notice before opening this menu to customers.",
     images: ["assets/char-kway-teow-hero.jpg", "assets/char-kway-teow-detail.jpg"],
@@ -114,7 +119,15 @@ const dietaryNoticeText = document.getElementById("dietaryNoticeText");
 const menuImagePrimary = document.getElementById("menuImagePrimary");
 const menuImageSecondary = document.getElementById("menuImageSecondary");
 
-unitPrice.textContent = String(UNIT_PRICE_AED);
+function activeMenu() {
+  return MENUS[state.settings.activeMenu] || MENUS[DEFAULT_SETTINGS.activeMenu];
+}
+
+function activeMenuPrice() {
+  return Number(activeMenu().price || MENU_PRICES_AED[DEFAULT_SETTINGS.activeMenu]);
+}
+
+unitPrice.textContent = String(activeMenuPrice());
 pickupAddress.textContent = PICKUP_ADDRESS;
 googleMapsLink.href = `https://www.google.com/maps/search/?api=1&query=${PICKUP_QUERY}`;
 wazeLink.href = `https://waze.com/ul?q=${PICKUP_QUERY}&navigate=yes`;
@@ -152,10 +165,11 @@ function applyServerState(payload = {}) {
 }
 
 function applyMenuPresentation() {
-  const menu = MENUS[state.settings.activeMenu] || MENUS[DEFAULT_SETTINGS.activeMenu];
+  const menu = activeMenu();
   menuTitle.textContent = menu.title;
   menuIntro.textContent = menu.intro;
   dietaryNoticeText.textContent = menu.dietary;
+  unitPrice.textContent = String(menu.price);
   [menuImagePrimary, menuImageSecondary].forEach((image, index) => {
     const figure = image.closest("figure");
     const source = menu.images[index];
@@ -389,7 +403,7 @@ function paidPacks() {
 }
 
 function orderTotal(order) {
-  return Number(order.totalAmount || Number(order.packs || 0) * UNIT_PRICE_AED);
+  return Number(order.totalAmount || Number(order.packs || 0) * Number(MENU_PRICES_AED[order.menuKey || DEFAULT_SETTINGS.activeMenu] || MENU_PRICES_AED[DEFAULT_SETTINGS.activeMenu]));
 }
 
 function formatAed(amount) {
@@ -516,7 +530,7 @@ function updateSummary() {
   summaryName.textContent = name || "Not entered";
   summaryPacks.textContent = packs > 0 ? String(packs) : "Not selected";
   summaryPickup.textContent = pickupTime || "Not selected";
-  summaryTotal.textContent = formatAed(packs * UNIT_PRICE_AED);
+  summaryTotal.textContent = formatAed(packs * activeMenuPrice());
   summaryPayment.textContent = payment;
   bankDetails.hidden = !bankTransfer;
   receiptUpload.required = bankTransfer;
@@ -822,8 +836,8 @@ form.addEventListener("submit", async (event) => {
     const paymentNote = paymentMethod === "Bank transfer"
       ? "Payment receipt received."
       : "Please prepare cash payment.";
-    const activeMenu = MENUS[state.settings.activeMenu] || MENUS[DEFAULT_SETTINGS.activeMenu];
-    confirmationText.textContent = `${order.name}, your order is ${packs} pack${packs === 1 ? "" : "s"} of ${activeMenu.title}. Total: ${formatAed(packs * UNIT_PRICE_AED)}. Pickup time: ${order.pickupTime}. Payment method: ${order.paymentMethod}. ${paymentNote} Pickup is self pickup at the location below.`;
+    const menu = activeMenu();
+    confirmationText.textContent = `${order.name}, your order is ${packs} pack${packs === 1 ? "" : "s"} of ${menu.title}. Total: ${formatAed(packs * activeMenuPrice())}. Pickup time: ${order.pickupTime}. Payment method: ${order.paymentMethod}. ${paymentNote} Pickup is self pickup at the location below.`;
     confirmation.hidden = false;
     form.reset();
     resetReceiptVerification();
