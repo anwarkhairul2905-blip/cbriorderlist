@@ -25,6 +25,7 @@ const MENUS = {
   "nasi-lemak": {
     title: "Nasi Lemak",
     price: MENU_PRICES_AED["nasi-lemak"],
+    requiresBeanSproutChoice: false,
     intro: "Place your order below. Payment is available by cash or bank transfer.",
     dietary: "Product contains rice, coconut cream, ginger, galangal, shallots, fried anchovies, peanuts, and cucumber. Please refer to your dietary restrictions before consuming.",
     images: ["assets/packed-nasi-lemak.jpg", "assets/nasi-lemak-plate.jpeg"],
@@ -33,6 +34,7 @@ const MENUS = {
   "char-kway-teow": {
     title: "Char Kway Teow",
     price: MENU_PRICES_AED["char-kway-teow"],
+    requiresBeanSproutChoice: true,
     intro: "Place your order below. Payment is available by cash or bank transfer.",
     dietary: "Please provide the Char Kway Teow ingredients and dietary notice before opening this menu to customers.",
     images: ["assets/char-kway-teow-hero.jpg", "assets/char-kway-teow-detail.jpg"],
@@ -57,6 +59,8 @@ const form = document.getElementById("orderForm");
 const nameInput = document.getElementById("customerName");
 const packInput = document.getElementById("packCount");
 const pickupTimeInput = document.getElementById("pickupTime");
+const beanSproutField = document.getElementById("beanSproutField");
+const beanSproutPreference = document.getElementById("beanSproutPreference");
 const decreaseButton = document.getElementById("decreasePacks");
 const increaseButton = document.getElementById("increasePacks");
 const paymentInputs = document.querySelectorAll('input[name="paymentMethod"]');
@@ -171,6 +175,9 @@ function applyMenuPresentation() {
   menuIntro.textContent = menu.intro;
   dietaryNoticeText.textContent = menu.dietary;
   unitPrice.textContent = String(menu.price);
+  beanSproutField.hidden = !menu.requiresBeanSproutChoice;
+  beanSproutPreference.required = menu.requiresBeanSproutChoice;
+  if (!menu.requiresBeanSproutChoice) beanSproutPreference.value = "";
   [menuImagePrimary, menuImageSecondary].forEach((image, index) => {
     const figure = menuFigures[index];
     if (!image || !figure) return;
@@ -675,6 +682,7 @@ function renderOrders() {
       <div>
         <strong>${escapeHtml(order.name)}</strong>
         <p>${escapeHtml(MENUS[order.menuKey || "nasi-lemak"]?.title || "Nasi Lemak")} · ${order.packs} pack${order.packs === 1 ? "" : "s"} · ${escapeHtml(order.paymentMethod)} · ${formatAed(orderTotal(order))}</p>
+        ${order.beanSproutPreference ? `<p>${order.beanSproutPreference === "with" ? "With" : "Without"} bean sprouts</p>` : ""}
         <p>Pickup: ${escapeHtml(order.pickupTime || "Not selected")}</p>
         ${order.receipt?.transactionDate ? `<p>Receipt date: ${escapeHtml(order.receipt.transactionDate)}</p>` : ""}
         ${order.receipt?.dataUrl ? `<button class="receipt-link" type="button" data-receipt-open>Open receipt</button>` : ""}
@@ -825,6 +833,7 @@ form.addEventListener("submit", async (event) => {
       name: nameInput.value.trim(),
       packs,
       pickupTime: pickupTimeInput.value,
+      beanSproutPreference: beanSproutPreference.value,
       paymentMethod,
       receipt,
     };
@@ -839,7 +848,10 @@ form.addEventListener("submit", async (event) => {
       ? "Payment receipt received."
       : "Please prepare cash payment.";
     const menu = activeMenu();
-    confirmationText.textContent = `${order.name}, your order is ${packs} pack${packs === 1 ? "" : "s"} of ${menu.title}. Total: ${formatAed(packs * activeMenuPrice())}. Pickup time: ${order.pickupTime}. Payment method: ${order.paymentMethod}. ${paymentNote} Pickup is self pickup at the location below.`;
+    const beanSproutNote = order.beanSproutPreference
+      ? ` ${order.beanSproutPreference === "with" ? "With" : "Without"} bean sprouts.`
+      : "";
+    confirmationText.textContent = `${order.name}, your order is ${packs} pack${packs === 1 ? "" : "s"} of ${menu.title}.${beanSproutNote} Total: ${formatAed(packs * activeMenuPrice())}. Pickup time: ${order.pickupTime}. Payment method: ${order.paymentMethod}. ${paymentNote} Pickup is self pickup at the location below.`;
     confirmation.hidden = false;
     form.reset();
     resetReceiptVerification();

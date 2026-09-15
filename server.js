@@ -17,6 +17,7 @@ const MENU_PRICES_AED = {
   "nasi-lemak": 10,
   "char-kway-teow": 25,
 };
+const BEAN_SPROUT_OPTIONS = new Set(["with", "without"]);
 
 const DEFAULT_SETTINGS = {
   dailyLimit: 120,
@@ -353,22 +354,26 @@ async function handleSettings(req, res) {
   sendJson(res, 200, adminState());
 }
 
-function validateOrder(body) {
+function validateOrder(body, activeMenu = DEFAULT_SETTINGS.activeMenu) {
   const name = String(body.name || "").trim();
   const packs = Number.parseInt(body.packs, 10);
   const pickupTime = String(body.pickupTime || "").trim();
   const paymentMethod = String(body.paymentMethod || "Cash").trim();
+  const beanSproutPreference = String(body.beanSproutPreference || "").trim();
   if (!name) return { ok: false, error: "Name is required" };
   if (!Number.isFinite(packs) || packs < 1) return { ok: false, error: "Pack count is required" };
   if (packs > MAX_ORDER_PACKS) return { ok: false, error: "Pack count too high" };
   if (!pickupTime) return { ok: false, error: "Pickup time is required" };
   if (!["Cash", "Bank transfer"].includes(paymentMethod)) return { ok: false, error: "Invalid payment method" };
-  return { ok: true, name, packs, pickupTime, paymentMethod };
+  if (activeMenu === "char-kway-teow" && !BEAN_SPROUT_OPTIONS.has(beanSproutPreference)) {
+    return { ok: false, error: "Choose whether you want bean sprouts" };
+  }
+  return { ok: true, name, packs, pickupTime, paymentMethod, beanSproutPreference: activeMenu === "char-kway-teow" ? beanSproutPreference : "" };
 }
 
 async function handleCreateOrder(req, res) {
   const body = await parseJsonBody(req);
-  const validation = validateOrder(body);
+  const validation = validateOrder(body, store.settings.activeMenu);
   if (!validation.ok) {
     sendJson(res, 400, { error: validation.error });
     return;
@@ -406,6 +411,7 @@ async function handleCreateOrder(req, res) {
       totalAmount: validation.packs * MENU_PRICES_AED[store.settings.activeMenu],
       orderDate: store.settings.orderDate,
       pickupTime: validation.pickupTime,
+      beanSproutPreference: validation.beanSproutPreference,
       paymentMethod: validation.paymentMethod,
       receipt,
       paid: validation.paymentMethod === "Bank transfer",
