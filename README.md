@@ -9,6 +9,10 @@ Shared ordering app for Cart by Ryna Ismail.
 - Receipt upload and verification flow for bank transfer orders
 - Shared admin dashboard for order tracking
 - Pickup-time grouping, unpaid/paid/taken status, and sales reports
+- Admin-controlled daily menu switch between Nasi Lemak and Char Kway Teow
+
+The customer page shows only the menu selected by the admin. Orders are tagged
+with the selected menu so the admin can distinguish orders when the menu changes.
 
 ## Run locally
 

@@ -12,10 +12,12 @@ const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "ryna2026";
 const SESSION_COOKIE = "nasi_admin_session";
 const RECEIPT_PREPAY_DAYS = 7;
 const MAX_ORDER_PACKS = 120;
+const MENU_KEYS = new Set(["nasi-lemak", "char-kway-teow"]);
 
 const DEFAULT_SETTINGS = {
   dailyLimit: 120,
   ordersOpen: true,
+  activeMenu: "nasi-lemak",
   orderDate: new Date().toISOString().slice(0, 10),
   accountHolder: "MUHAMAD KHAIRULANWAR",
   bankName: "ADIB",
@@ -112,6 +114,7 @@ function normalizeSettings(settings = {}) {
   const normalized = { ...DEFAULT_SETTINGS, ...settings };
   normalized.dailyLimit = Math.max(Number(normalized.dailyLimit || DEFAULT_SETTINGS.dailyLimit), 1);
   normalized.ordersOpen = Boolean(normalized.ordersOpen);
+  normalized.activeMenu = MENU_KEYS.has(String(normalized.activeMenu)) ? String(normalized.activeMenu) : DEFAULT_SETTINGS.activeMenu;
   normalized.orderDate = String(normalized.orderDate || DEFAULT_SETTINGS.orderDate).slice(0, 10);
   normalized.accountHolder = DEFAULT_SETTINGS.accountHolder;
   normalized.bankName = DEFAULT_SETTINGS.bankName;
@@ -152,6 +155,11 @@ function queueWrite(mutator) {
   return writeQueue;
 }
 
+function ordersForActiveMenu(orders) {
+  const activeMenu = store?.settings?.activeMenu || DEFAULT_SETTINGS.activeMenu;
+  return orders.filter((order) => (order.menuKey || DEFAULT_SETTINGS.activeMenu) === activeMenu);
+}
+
 function totalPacks(orders) {
   return orders.reduce((total, order) => total + Number(order.packs || 0), 0);
 }
@@ -163,8 +171,9 @@ function paidPacks(orders) {
 }
 
 function buildSummary() {
-  const total = totalPacks(store.orders);
-  const paid = paidPacks(store.orders);
+  const activeOrders = ordersForActiveMenu(store.orders);
+  const total = totalPacks(activeOrders);
+  const paid = paidPacks(activeOrders);
   const remaining = Math.max(Number(store.settings.dailyLimit || 0) - total, 0);
   return {
     orderCount: store.orders.length,
@@ -335,6 +344,7 @@ async function handleSettings(req, res) {
     store.settings.orderDate = String(body.orderDate || store.settings.orderDate).slice(0, 10);
     store.settings.dailyLimit = Math.max(Number(body.dailyLimit || store.settings.dailyLimit), totalPacks(store.orders));
     store.settings.ordersOpen = Boolean(body.ordersOpen);
+    if (MENU_KEYS.has(String(body.activeMenu))) store.settings.activeMenu = String(body.activeMenu);
   });
   sendJson(res, 200, adminState());
 }
@@ -385,6 +395,7 @@ async function handleCreateOrder(req, res) {
 
     createdOrder = {
       id: `ORD-${Date.now()}-${crypto.randomBytes(3).toString("hex")}`,
+      menuKey: store.settings.activeMenu,
       name: validation.name,
       packs: validation.packs,
       unitPrice: 10,

@@ -14,26 +14,26 @@
         <img class="brand-logo" src="assets/cart-by-ryna-logo.png" alt="Cart by Ryna Ismail">
         <div>
           <p class="kicker">The amazing tastes of Malaysia to be discovered . Abu Dhabi weekly orders</p>
-          <h1>Nasi Lemak</h1>
-          <p class="intro">Place your order below. Payment is available by cash or bank transfer.</p>
+          <h1 id="menuTitle">Nasi Lemak</h1>
+          <p class="intro" id="menuIntro">Place your order below. Payment is available by cash or bank transfer.</p>
         </div>
       </div>
       <div class="status-pill" id="orderStatus">Orders open</div>
     </section>
 
     <section class="view active" id="customerView">
-      <section class="product-gallery" aria-label="Nasi lemak photos">
+      <section class="product-gallery" id="productGallery" aria-label="Menu photos">
         <figure class="product-photo large">
-          <img src="assets/packed-nasi-lemak.jpg" alt="Packed nasi lemak by Cart by Ryna Ismail">
+          <img id="menuImagePrimary" src="assets/packed-nasi-lemak.jpg" alt="Packed nasi lemak by Cart by Ryna Ismail">
         </figure>
         <figure class="product-photo">
-          <img src="assets/nasi-lemak-plate.jpeg" alt="Nasi lemak with egg, sambal, anchovies, peanuts, and cucumber">
+          <img id="menuImageSecondary" src="assets/nasi-lemak-plate.jpeg" alt="Nasi lemak with egg, sambal, anchovies, peanuts, and cucumber">
         </figure>
       </section>
 
       <section class="dietary-notice">
         <strong>Dietary notice</strong>
-        <p>Product contains rice, coconut cream, ginger, galangal, shallots, fried anchovies, peanuts, and cucumber. Please refer to your dietary restrictions before consuming.</p>
+        <p id="dietaryNoticeText">Product contains rice, coconut cream, ginger, galangal, shallots, fried anchovies, peanuts, and cucumber. Please refer to your dietary restrictions before consuming.</p>
       </section>
 
       <div class="capacity-strip">
@@ -178,6 +178,14 @@
           <div class="field">
             <label for="adminOrderDate">Order day</label>
             <input id="adminOrderDate" type="date">
+          </div>
+          <div class="field">
+            <label for="adminActiveMenu">Customer menu</label>
+            <select id="adminActiveMenu">
+              <option value="nasi-lemak">Nasi Lemak</option>
+              <option value="char-kway-teow">Char Kway Teow</option>
+            </select>
+            <p class="hint">Customers see only the selected menu at this URL.</p>
           </div>
           <div class="field">
             <label for="adminPackLimit">Pack limit</label>

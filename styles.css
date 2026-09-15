@@ -187,6 +187,15 @@ h1 {
   object-fit: cover;
 }
 
+.product-photo.image-placeholder {
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  color: var(--muted);
+  text-align: center;
+  font-weight: 800;
+}
+
 .dietary-notice {
   margin-top: 14px;
   border: 1px solid rgba(200, 147, 45, 0.34);

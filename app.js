@@ -10,11 +10,29 @@ const PICKUP_QUERY = encodeURIComponent(PICKUP_ADDRESS);
 const DEFAULT_SETTINGS = {
   dailyLimit: 120,
   ordersOpen: true,
+  activeMenu: "nasi-lemak",
   orderDate: new Date().toISOString().slice(0, 10),
   accountHolder: EXPECTED_ACCOUNT_HOLDER,
   bankName: EXPECTED_BANK_NAME,
   iban: EXPECTED_IBAN,
   accountNumber: EXPECTED_ACCOUNT_NUMBER,
+};
+
+const MENUS = {
+  "nasi-lemak": {
+    title: "Nasi Lemak",
+    intro: "Place your order below. Payment is available by cash or bank transfer.",
+    dietary: "Product contains rice, coconut cream, ginger, galangal, shallots, fried anchovies, peanuts, and cucumber. Please refer to your dietary restrictions before consuming.",
+    images: ["assets/packed-nasi-lemak.jpg", "assets/nasi-lemak-plate.jpeg"],
+    alts: ["Packed nasi lemak by Cart by Ryna Ismail", "Nasi lemak with egg, sambal, anchovies, peanuts, and cucumber"],
+  },
+  "char-kway-teow": {
+    title: "Char Kway Teow",
+    intro: "Place your order below. Payment is available by cash or bank transfer.",
+    dietary: "Please provide the Char Kway Teow ingredients and dietary notice before opening this menu to customers.",
+    images: ["assets/char-kway-teow-hero.jpg", "assets/char-kway-teow-detail.jpg"],
+    alts: ["Char Kway Teow by Cart by Ryna Ismail", "Char Kway Teow serving"],
+  },
 };
 
 let state = createInitialState();
@@ -58,6 +76,7 @@ const submitOrderButton = document.getElementById("submitOrderButton");
 const settingsForm = document.getElementById("settingsForm");
 const adminOrderDate = document.getElementById("adminOrderDate");
 const adminPackLimit = document.getElementById("adminPackLimit");
+const adminActiveMenu = document.getElementById("adminActiveMenu");
 const adminOrdersOpen = document.getElementById("adminOrdersOpen");
 const adminTotalPacks = document.getElementById("adminTotalPacks");
 const adminPaidPacks = document.getElementById("adminPaidPacks");
@@ -89,6 +108,11 @@ const receiptDialog = document.getElementById("receiptDialog");
 const receiptDialogTitle = document.getElementById("receiptDialogTitle");
 const receiptDialogImage = document.getElementById("receiptDialogImage");
 const receiptDialogMeta = document.getElementById("receiptDialogMeta");
+const menuTitle = document.getElementById("menuTitle");
+const menuIntro = document.getElementById("menuIntro");
+const dietaryNoticeText = document.getElementById("dietaryNoticeText");
+const menuImagePrimary = document.getElementById("menuImagePrimary");
+const menuImageSecondary = document.getElementById("menuImageSecondary");
 
 unitPrice.textContent = String(UNIT_PRICE_AED);
 pickupAddress.textContent = PICKUP_ADDRESS;
@@ -125,6 +149,26 @@ function applyServerState(payload = {}) {
     unpaidPacks: Number(payload.summary?.unpaidPacks || 0),
     remainingPacks: Number(payload.summary?.remainingPacks || settings.dailyLimit),
   };
+}
+
+function applyMenuPresentation() {
+  const menu = MENUS[state.settings.activeMenu] || MENUS[DEFAULT_SETTINGS.activeMenu];
+  menuTitle.textContent = menu.title;
+  menuIntro.textContent = menu.intro;
+  dietaryNoticeText.textContent = menu.dietary;
+  [menuImagePrimary, menuImageSecondary].forEach((image, index) => {
+    const figure = image.closest("figure");
+    const source = menu.images[index];
+    image.alt = menu.alts[index];
+    image.onerror = () => {
+      figure.classList.add("image-placeholder");
+      figure.textContent = `${menu.title} photo coming soon`;
+    };
+    figure.classList.remove("image-placeholder");
+    figure.innerHTML = "";
+    figure.appendChild(image);
+    image.src = source;
+  });
 }
 
 async function apiRequest(pathname, options = {}) {
@@ -526,6 +570,7 @@ function renderSubmitState(open = state.settings.ordersOpen && remainingCapacity
 function renderSettings() {
   adminOrderDate.value = state.settings.orderDate;
   adminPackLimit.value = String(state.settings.dailyLimit);
+  adminActiveMenu.value = state.settings.activeMenu;
   adminOrdersOpen.checked = Boolean(state.settings.ordersOpen);
   accountHolderValue.textContent = state.settings.accountHolder;
   bankNameValue.textContent = state.settings.bankName;
@@ -551,6 +596,7 @@ function saveAdminSettings() {
       orderDate: adminOrderDate.value || DEFAULT_SETTINGS.orderDate,
       dailyLimit: Math.max(Number(adminPackLimit.value || DEFAULT_SETTINGS.dailyLimit), totalPacks()),
       ordersOpen: adminOrdersOpen.checked,
+      activeMenu: adminActiveMenu.value,
     }),
   }).then(refreshState).then(render);
 }
@@ -612,7 +658,7 @@ function renderOrders() {
     <article class="order-card" data-order-id="${order.id}">
       <div>
         <strong>${escapeHtml(order.name)}</strong>
-        <p>${order.packs} pack${order.packs === 1 ? "" : "s"} · ${escapeHtml(order.paymentMethod)} · ${formatAed(orderTotal(order))}</p>
+        <p>${escapeHtml(MENUS[order.menuKey || "nasi-lemak"]?.title || "Nasi Lemak")} · ${order.packs} pack${order.packs === 1 ? "" : "s"} · ${escapeHtml(order.paymentMethod)} · ${formatAed(orderTotal(order))}</p>
         <p>Pickup: ${escapeHtml(order.pickupTime || "Not selected")}</p>
         ${order.receipt?.transactionDate ? `<p>Receipt date: ${escapeHtml(order.receipt.transactionDate)}</p>` : ""}
         ${order.receipt?.dataUrl ? `<button class="receipt-link" type="button" data-receipt-open>Open receipt</button>` : ""}
@@ -635,6 +681,7 @@ function renderOrders() {
 }
 
 function render() {
+  applyMenuPresentation();
   renderCapacity();
   if (!isEditingAdminSettings()) renderSettings();
   renderAdminMetrics();
@@ -775,7 +822,8 @@ form.addEventListener("submit", async (event) => {
     const paymentNote = paymentMethod === "Bank transfer"
       ? "Payment receipt received."
       : "Please prepare cash payment.";
-    confirmationText.textContent = `${order.name}, your order is ${packs} pack${packs === 1 ? "" : "s"} of nasi lemak. Total: ${formatAed(packs * UNIT_PRICE_AED)}. Pickup time: ${order.pickupTime}. Payment method: ${order.paymentMethod}. ${paymentNote} Pickup is self pickup at the location below.`;
+    const activeMenu = MENUS[state.settings.activeMenu] || MENUS[DEFAULT_SETTINGS.activeMenu];
+    confirmationText.textContent = `${order.name}, your order is ${packs} pack${packs === 1 ? "" : "s"} of ${activeMenu.title}. Total: ${formatAed(packs * UNIT_PRICE_AED)}. Pickup time: ${order.pickupTime}. Payment method: ${order.paymentMethod}. ${paymentNote} Pickup is self pickup at the location below.`;
     confirmation.hidden = false;
     form.reset();
     resetReceiptVerification();
