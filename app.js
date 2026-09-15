@@ -118,6 +118,7 @@ const menuIntro = document.getElementById("menuIntro");
 const dietaryNoticeText = document.getElementById("dietaryNoticeText");
 const menuImagePrimary = document.getElementById("menuImagePrimary");
 const menuImageSecondary = document.getElementById("menuImageSecondary");
+const menuFigures = [menuImagePrimary?.closest("figure"), menuImageSecondary?.closest("figure")];
 
 function activeMenu() {
   return MENUS[state.settings.activeMenu] || MENUS[DEFAULT_SETTINGS.activeMenu];
@@ -171,7 +172,8 @@ function applyMenuPresentation() {
   dietaryNoticeText.textContent = menu.dietary;
   unitPrice.textContent = String(menu.price);
   [menuImagePrimary, menuImageSecondary].forEach((image, index) => {
-    const figure = image.closest("figure");
+    const figure = menuFigures[index];
+    if (!image || !figure) return;
     const source = menu.images[index];
     image.alt = menu.alts[index];
     image.onerror = () => {
