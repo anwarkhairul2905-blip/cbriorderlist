@@ -1,5 +1,8 @@
 const MAX_RECEIPT_BYTES = 4 * 1024 * 1024;
-const UNIT_PRICE_AED = 10;
+const MENU_PRICES_AED = {
+  "nasi-lemak": 10,
+  "char-kway-teow": 25,
+};
 const RECEIPT_PREPAY_DAYS = 7;
 const EXPECTED_ACCOUNT_HOLDER = "MUHAMAD KHAIRULANWAR";
 const EXPECTED_BANK_NAME = "ADIB";
@@ -10,11 +13,33 @@ const PICKUP_QUERY = encodeURIComponent(PICKUP_ADDRESS);
 const DEFAULT_SETTINGS = {
   dailyLimit: 120,
   ordersOpen: true,
+  activeMenu: "nasi-lemak",
   orderDate: new Date().toISOString().slice(0, 10),
   accountHolder: EXPECTED_ACCOUNT_HOLDER,
   bankName: EXPECTED_BANK_NAME,
   iban: EXPECTED_IBAN,
   accountNumber: EXPECTED_ACCOUNT_NUMBER,
+};
+
+const MENUS = {
+  "nasi-lemak": {
+    title: "Nasi Lemak",
+    price: MENU_PRICES_AED["nasi-lemak"],
+    requiresBeanSproutChoice: false,
+    intro: "Place your order below. Payment is available by cash or bank transfer.",
+    dietary: "Product contains rice, coconut cream, ginger, galangal, shallots, fried anchovies, peanuts, and cucumber. Please refer to your dietary restrictions before consuming.",
+    images: ["assets/packed-nasi-lemak.jpg", "assets/nasi-lemak-plate.jpeg"],
+    alts: ["Packed nasi lemak by Cart by Ryna Ismail", "Nasi lemak with egg, sambal, anchovies, peanuts, and cucumber"],
+  },
+  "char-kway-teow": {
+    title: "Char Kway Teow",
+    price: MENU_PRICES_AED["char-kway-teow"],
+    requiresBeanSproutChoice: true,
+    intro: "Place your order below. Payment is available by cash or bank transfer.",
+    dietary: "Contains flat rice noodles, prawns, sesame oil, chilli paste, seafood base, soy sauce, bean sprouts, and chives. Please consult your own dietary restrictions before consuming.",
+    images: ["assets/char-kway-teow-hero.jpg?v=20260919b", "assets/char-kway-teow-detail.jpg?v=20260919d"],
+    alts: ["Char Kway Teow by Cart by Ryna Ismail", "Char Kway Teow serving"],
+  },
 };
 
 let state = createInitialState();
@@ -34,6 +59,8 @@ const form = document.getElementById("orderForm");
 const nameInput = document.getElementById("customerName");
 const packInput = document.getElementById("packCount");
 const pickupTimeInput = document.getElementById("pickupTime");
+const beanSproutField = document.getElementById("beanSproutField");
+const beanSproutPreference = document.getElementById("beanSproutPreference");
 const decreaseButton = document.getElementById("decreasePacks");
 const increaseButton = document.getElementById("increasePacks");
 const paymentInputs = document.querySelectorAll('input[name="paymentMethod"]');
@@ -58,6 +85,7 @@ const submitOrderButton = document.getElementById("submitOrderButton");
 const settingsForm = document.getElementById("settingsForm");
 const adminOrderDate = document.getElementById("adminOrderDate");
 const adminPackLimit = document.getElementById("adminPackLimit");
+const adminActiveMenu = document.getElementById("adminActiveMenu");
 const adminOrdersOpen = document.getElementById("adminOrdersOpen");
 const adminTotalPacks = document.getElementById("adminTotalPacks");
 const adminPaidPacks = document.getElementById("adminPaidPacks");
@@ -73,9 +101,13 @@ const monthlyPackCount = document.getElementById("monthlyPackCount");
 const monthlySalesTotal = document.getElementById("monthlySalesTotal");
 const monthlyPaidTotal = document.getElementById("monthlyPaidTotal");
 const monthlyUnpaidTotal = document.getElementById("monthlyUnpaidTotal");
+const downloadWeeklyReport = document.getElementById("downloadWeeklyReport");
+const downloadMonthlyReport = document.getElementById("downloadMonthlyReport");
 const clearOrdersButton = document.getElementById("clearOrdersButton");
 const ordersList = document.getElementById("ordersList");
 const orderCountLabel = document.getElementById("orderCountLabel");
+const salesHistoryList = document.getElementById("salesHistoryList");
+const salesHistoryCountLabel = document.getElementById("salesHistoryCountLabel");
 const accountHolderValue = document.getElementById("accountHolderValue");
 const bankNameValue = document.getElementById("bankNameValue");
 const ibanValue = document.getElementById("ibanValue");
@@ -85,8 +117,26 @@ const googleMapsLink = document.getElementById("googleMapsLink");
 const wazeLink = document.getElementById("wazeLink");
 const appleMapsLink = document.getElementById("appleMapsLink");
 const unitPrice = document.getElementById("unitPrice");
+const receiptDialog = document.getElementById("receiptDialog");
+const receiptDialogTitle = document.getElementById("receiptDialogTitle");
+const receiptDialogImage = document.getElementById("receiptDialogImage");
+const receiptDialogMeta = document.getElementById("receiptDialogMeta");
+const menuTitle = document.getElementById("menuTitle");
+const menuIntro = document.getElementById("menuIntro");
+const dietaryNoticeText = document.getElementById("dietaryNoticeText");
+const menuImagePrimary = document.getElementById("menuImagePrimary");
+const menuImageSecondary = document.getElementById("menuImageSecondary");
+const menuFigures = [menuImagePrimary?.closest("figure"), menuImageSecondary?.closest("figure")];
 
-unitPrice.textContent = String(UNIT_PRICE_AED);
+function activeMenu() {
+  return MENUS[state.settings.activeMenu] || MENUS[DEFAULT_SETTINGS.activeMenu];
+}
+
+function activeMenuPrice() {
+  return Number(activeMenu().price || MENU_PRICES_AED[DEFAULT_SETTINGS.activeMenu]);
+}
+
+unitPrice.textContent = String(activeMenuPrice());
 pickupAddress.textContent = PICKUP_ADDRESS;
 googleMapsLink.href = `https://www.google.com/maps/search/?api=1&query=${PICKUP_QUERY}`;
 wazeLink.href = `https://waze.com/ul?q=${PICKUP_QUERY}&navigate=yes`;
@@ -96,6 +146,7 @@ function createInitialState() {
   return {
     settings: { ...DEFAULT_SETTINGS },
     orders: [],
+    salesHistory: [],
     summary: {
       orderCount: 0,
       totalPacks: 0,
@@ -114,6 +165,7 @@ function applyServerState(payload = {}) {
   settings.accountNumber = EXPECTED_ACCOUNT_NUMBER;
   state.settings = settings;
   state.orders = Array.isArray(payload.orders) ? payload.orders : [];
+  state.salesHistory = Array.isArray(payload.salesHistory) ? payload.salesHistory : [];
   state.summary = {
     orderCount: Number(payload.summary?.orderCount || state.orders.length || 0),
     totalPacks: Number(payload.summary?.totalPacks || 0),
@@ -121,6 +173,33 @@ function applyServerState(payload = {}) {
     unpaidPacks: Number(payload.summary?.unpaidPacks || 0),
     remainingPacks: Number(payload.summary?.remainingPacks || settings.dailyLimit),
   };
+}
+
+function applyMenuPresentation() {
+  const menu = activeMenu();
+  menuTitle.textContent = menu.title;
+  menuIntro.textContent = menu.intro;
+  dietaryNoticeText.textContent = menu.dietary;
+  unitPrice.textContent = String(menu.price);
+  beanSproutField.hidden = !menu.requiresBeanSproutChoice;
+  beanSproutPreference.required = menu.requiresBeanSproutChoice;
+  if (!menu.requiresBeanSproutChoice) beanSproutPreference.value = "";
+  [menuImagePrimary, menuImageSecondary].forEach((image, index) => {
+    const figure = menuFigures[index];
+    if (!image || !figure) return;
+    const source = menu.images[index];
+    image.alt = menu.alts[index];
+    image.classList.toggle("char-kway-teow-primary", menu === MENUS["char-kway-teow"] && index === 0);
+    image.classList.toggle("char-kway-teow-secondary", menu === MENUS["char-kway-teow"] && index === 1);
+    image.onerror = () => {
+      figure.classList.add("image-placeholder");
+      figure.textContent = `${menu.title} photo coming soon`;
+    };
+    figure.classList.remove("image-placeholder");
+    figure.innerHTML = "";
+    figure.appendChild(image);
+    image.src = source;
+  });
 }
 
 async function apiRequest(pathname, options = {}) {
@@ -341,7 +420,7 @@ function paidPacks() {
 }
 
 function orderTotal(order) {
-  return Number(order.totalAmount || Number(order.packs || 0) * UNIT_PRICE_AED);
+  return Number(order.totalAmount || Number(order.packs || 0) * Number(MENU_PRICES_AED[order.menuKey || DEFAULT_SETTINGS.activeMenu] || MENU_PRICES_AED[DEFAULT_SETTINGS.activeMenu]));
 }
 
 function formatAed(amount) {
@@ -409,7 +488,7 @@ function monthRangeFor(dateKeyValue) {
 }
 
 function summarizeOrders(startDate, endDate) {
-  return state.orders.reduce((summary, order) => {
+  return salesRecordsForRange(startDate, endDate).reduce((summary, order) => {
     const currentDate = orderDateKey(order);
     if (!currentDate || currentDate < startDate || currentDate > endDate) return summary;
     const total = orderTotal(order);
@@ -420,6 +499,72 @@ function summarizeOrders(startDate, endDate) {
     else summary.unpaid += total;
     return summary;
   }, { orders: 0, packs: 0, sales: 0, paid: 0, unpaid: 0 });
+}
+
+function salesRecordsForRange(startDate, endDate) {
+  return [
+    ...state.orders.map((order) => ({ ...order, recordSource: "Active" })),
+    ...state.salesHistory.map((order) => ({ ...order, recordSource: "Archived" })),
+  ].filter((order) => {
+    const currentDate = orderDateKey(order);
+    return currentDate && currentDate >= startDate && currentDate <= endDate;
+  }).sort((a, b) => {
+    const dateDiff = String(a.orderDate || "").localeCompare(String(b.orderDate || ""));
+    if (dateDiff) return dateDiff;
+    return new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime();
+  });
+}
+
+function generateSalesPdf(periodLabel, startDate, endDate) {
+  const jsPdf = window.jspdf?.jsPDF;
+  if (!jsPdf) {
+    window.alert("The PDF generator is still loading. Please try again in a moment.");
+    return;
+  }
+
+  const records = salesRecordsForRange(startDate, endDate);
+  const summary = summarizeOrders(startDate, endDate);
+  const document = new jsPdf({ unit: "mm", format: "a4" });
+  const pageWidth = document.internal.pageSize.getWidth();
+  const pageHeight = document.internal.pageSize.getHeight();
+  const margin = 14;
+  let y = 18;
+
+  const addPageIfNeeded = (height = 8) => {
+    if (y + height <= pageHeight - 14) return;
+    document.addPage();
+    y = 16;
+  };
+  const addLine = (text, options = {}) => {
+    const size = options.size || 9;
+    document.setFontSize(size);
+    document.setFont(options.bold ? "helvetica" : "helvetica", options.bold ? "bold" : "normal");
+    const lines = document.splitTextToSize(String(text), pageWidth - margin * 2);
+    addPageIfNeeded(lines.length * (size * 0.45 + 1));
+    document.text(lines, margin, y);
+    y += lines.length * (size * 0.45 + 1) + (options.gap || 1.5);
+  };
+
+  addLine("Cart by Ryna Ismail", { size: 16, bold: true, gap: 3 });
+  addLine(`${periodLabel} sales report`, { size: 13, bold: true, gap: 2 });
+  addLine(`Period: ${startDate} to ${endDate}`);
+  addLine(`Generated: ${new Date().toLocaleString("en-AE")}`, { gap: 4 });
+  addLine(`Orders: ${summary.orders}   |   Packs: ${summary.packs}   |   Sales: ${formatAed(summary.sales)}   |   Paid: ${formatAed(summary.paid)}   |   Unpaid: ${formatAed(summary.unpaid)}`, { bold: true, gap: 5 });
+  addLine("Order records", { size: 11, bold: true, gap: 3 });
+
+  if (!records.length) {
+    addLine("No sales records were found for this period.");
+  } else {
+    records.forEach((order, index) => {
+      const menuName = MENUS[order.menuKey || "nasi-lemak"]?.title || "Nasi Lemak";
+      const beanSproutNote = order.beanSproutPreference ? `, ${order.beanSproutPreference === "with" ? "with" : "without"} bean sprouts` : "";
+      addLine(`${index + 1}. ${order.orderDate || "No date"} · ${order.name || "Customer"}`, { bold: true, gap: 0.5 });
+      addLine(`${menuName}${beanSproutNote} · ${order.packs || 0} pack(s) · ${formatAed(orderTotal(order))} · ${order.paymentMethod || "Payment not recorded"} · ${order.paid ? "Paid" : "Unpaid"} · Pickup: ${order.pickupTime || "Not recorded"} · ${order.recordSource}`, { gap: 2.5 });
+    });
+  }
+
+  const filename = `cart-by-ryna-${periodLabel.toLowerCase()}-sales-${startDate}-to-${endDate}.pdf`;
+  document.save(filename);
 }
 
 function updateTabs(targetId) {
@@ -468,7 +613,7 @@ function updateSummary() {
   summaryName.textContent = name || "Not entered";
   summaryPacks.textContent = packs > 0 ? String(packs) : "Not selected";
   summaryPickup.textContent = pickupTime || "Not selected";
-  summaryTotal.textContent = formatAed(packs * UNIT_PRICE_AED);
+  summaryTotal.textContent = formatAed(packs * activeMenuPrice());
   summaryPayment.textContent = payment;
   bankDetails.hidden = !bankTransfer;
   receiptUpload.required = bankTransfer;
@@ -522,6 +667,7 @@ function renderSubmitState(open = state.settings.ordersOpen && remainingCapacity
 function renderSettings() {
   adminOrderDate.value = state.settings.orderDate;
   adminPackLimit.value = String(state.settings.dailyLimit);
+  adminActiveMenu.value = state.settings.activeMenu;
   adminOrdersOpen.checked = Boolean(state.settings.ordersOpen);
   accountHolderValue.textContent = state.settings.accountHolder;
   bankNameValue.textContent = state.settings.bankName;
@@ -538,6 +684,18 @@ function renderAdminMetrics() {
   adminSalesTotal.textContent = formatAed(state.orders.reduce((sum, order) => sum + orderTotal(order), 0));
   const orderCount = Number(state.summary?.orderCount ?? state.orders.length);
   orderCountLabel.textContent = `${orderCount} order${orderCount === 1 ? "" : "s"}`;
+}
+
+function saveAdminSettings() {
+  return apiRequest("/api/settings", {
+    method: "PATCH",
+    body: JSON.stringify({
+      orderDate: adminOrderDate.value || DEFAULT_SETTINGS.orderDate,
+      dailyLimit: Math.max(Number(adminPackLimit.value || DEFAULT_SETTINGS.dailyLimit), totalPacks()),
+      ordersOpen: adminOrdersOpen.checked,
+      activeMenu: adminActiveMenu.value,
+    }),
+  }).then(refreshState).then(render);
 }
 
 function renderSalesReports() {
@@ -597,10 +755,11 @@ function renderOrders() {
     <article class="order-card" data-order-id="${order.id}">
       <div>
         <strong>${escapeHtml(order.name)}</strong>
-        <p>${order.packs} pack${order.packs === 1 ? "" : "s"} · ${escapeHtml(order.paymentMethod)} · ${formatAed(orderTotal(order))}</p>
+        <p>${escapeHtml(MENUS[order.menuKey || "nasi-lemak"]?.title || "Nasi Lemak")} · ${order.packs} pack${order.packs === 1 ? "" : "s"} · ${escapeHtml(order.paymentMethod)} · ${formatAed(orderTotal(order))}</p>
+        ${order.beanSproutPreference ? `<p>${order.beanSproutPreference === "with" ? "With" : "Without"} bean sprouts</p>` : ""}
         <p>Pickup: ${escapeHtml(order.pickupTime || "Not selected")}</p>
         ${order.receipt?.transactionDate ? `<p>Receipt date: ${escapeHtml(order.receipt.transactionDate)}</p>` : ""}
-        ${order.receipt?.dataUrl ? `<a class="receipt-link" href="${escapeHtml(order.receipt.dataUrl)}" target="_blank" rel="noopener noreferrer">Open receipt</a>` : ""}
+        ${order.receipt?.dataUrl ? `<button class="receipt-link" type="button" data-receipt-open>Open receipt</button>` : ""}
         <small>${formatTime(order.createdAt)}</small>
       </div>
       <div class="order-actions">
@@ -619,12 +778,40 @@ function renderOrders() {
   `).join("");
 }
 
+function renderSalesHistory() {
+  const records = [...state.salesHistory].sort((a, b) => new Date(b.archivedAt || b.createdAt).getTime() - new Date(a.archivedAt || a.createdAt).getTime());
+  salesHistoryCountLabel.textContent = `${records.length} archived order${records.length === 1 ? "" : "s"}`;
+  if (!records.length) {
+    salesHistoryList.innerHTML = `<div class="empty-state">No archived sales yet.</div>`;
+    return;
+  }
+
+  salesHistoryList.innerHTML = records.map((order) => {
+    const menuName = MENUS[order.menuKey || "nasi-lemak"]?.title || "Nasi Lemak";
+    const beanSproutNote = order.beanSproutPreference ? ` · ${order.beanSproutPreference === "with" ? "With" : "Without"} bean sprouts` : "";
+    const archivedLabel = order.archivedAt ? `Archived ${formatTime(order.archivedAt)}` : "Archived sales record";
+    return `
+      <article class="order-card archived-order-card">
+        <div>
+          <strong>${escapeHtml(order.name)}</strong>
+          <p>${escapeHtml(menuName)} · ${order.packs} pack${order.packs === 1 ? "" : "s"}${beanSproutNote} · ${escapeHtml(order.paymentMethod)} · ${formatAed(orderTotal(order))}</p>
+          <p>Order day: ${escapeHtml(order.orderDate || "Not recorded")} · Pickup: ${escapeHtml(order.pickupTime || "Not selected")}</p>
+          <small>${escapeHtml(archivedLabel)}</small>
+        </div>
+        <div class="order-actions"><span>${order.paid ? "Paid" : "Unpaid"}</span></div>
+      </article>
+    `;
+  }).join("");
+}
+
 function render() {
+  applyMenuPresentation();
   renderCapacity();
   if (!isEditingAdminSettings()) renderSettings();
   renderAdminMetrics();
   renderSalesReports();
   renderOrders();
+  renderSalesHistory();
   updateSummary();
 }
 
@@ -635,6 +822,44 @@ function escapeHtml(value) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
+}
+
+function closeReceiptPreview() {
+  if (receiptDialog?.open && typeof receiptDialog.close === "function") {
+    receiptDialog.close();
+  }
+  if (receiptDialogImage) receiptDialogImage.src = "";
+  if (receiptDialogTitle) receiptDialogTitle.textContent = "Receipt preview";
+  if (receiptDialogMeta) receiptDialogMeta.textContent = "";
+}
+
+function openReceiptPreview(order) {
+  const receipt = order?.receipt;
+  const dataUrl = String(receipt?.dataUrl || "");
+  if (!dataUrl) return;
+
+  if (receiptDialogTitle) {
+    receiptDialogTitle.textContent = `Receipt preview - ${order.name || "Order"}`;
+  }
+  if (receiptDialogImage) {
+    receiptDialogImage.src = dataUrl;
+    receiptDialogImage.alt = `Receipt for ${order.name || "order"}`;
+  }
+  if (receiptDialogMeta) {
+    const meta = [receipt?.name, receipt?.type, receipt?.size ? `${Math.round(Number(receipt.size) / 1024)} KB` : ""]
+      .filter(Boolean)
+      .join(" · ");
+    receiptDialogMeta.textContent = meta;
+  }
+
+  if (receiptDialog?.showModal && !receiptDialog.open) {
+    receiptDialog.showModal();
+    return;
+  }
+
+  if (receiptDialog) {
+    receiptDialog.open = true;
+  }
 }
 
 tabButtons.forEach((button) => {
@@ -663,6 +888,11 @@ increaseButton.addEventListener("click", () => {
 
 paymentInputs.forEach((input) => {
   input.addEventListener("change", updateSummary);
+});
+
+adminOrdersOpen.addEventListener("change", () => {
+  state.settings.ordersOpen = adminOrdersOpen.checked;
+  saveAdminSettings().catch((error) => window.alert(error.message));
 });
 
 receiptUpload.addEventListener("change", verifyReceiptImage);
@@ -704,6 +934,7 @@ form.addEventListener("submit", async (event) => {
       name: nameInput.value.trim(),
       packs,
       pickupTime: pickupTimeInput.value,
+      beanSproutPreference: beanSproutPreference.value,
       paymentMethod,
       receipt,
     };
@@ -715,9 +946,13 @@ form.addEventListener("submit", async (event) => {
     await refreshState();
 
     const paymentNote = paymentMethod === "Bank transfer"
-      ? "Please make the bank transfer using the details shown."
+      ? "Payment receipt received."
       : "Please prepare cash payment.";
-    confirmationText.textContent = `${order.name}, your order is ${packs} pack${packs === 1 ? "" : "s"} of nasi lemak. Total: ${formatAed(packs * UNIT_PRICE_AED)}. Pickup time: ${order.pickupTime}. Payment method: ${order.paymentMethod}. ${paymentNote} Pickup is self pickup at the location below.`;
+    const menu = activeMenu();
+    const beanSproutNote = order.beanSproutPreference
+      ? ` ${order.beanSproutPreference === "with" ? "With" : "Without"} bean sprouts.`
+      : "";
+    confirmationText.textContent = `${order.name}, your order is ${packs} pack${packs === 1 ? "" : "s"} of ${menu.title}.${beanSproutNote} Total: ${formatAed(packs * activeMenuPrice())}. Pickup time: ${order.pickupTime}. Payment method: ${order.paymentMethod}. ${paymentNote} Pickup is self pickup at the location below.`;
     confirmation.hidden = false;
     form.reset();
     resetReceiptVerification();
@@ -729,14 +964,17 @@ form.addEventListener("submit", async (event) => {
 
 settingsForm.addEventListener("submit", (event) => {
   event.preventDefault();
-  apiRequest("/api/settings", {
-    method: "PATCH",
-    body: JSON.stringify({
-      orderDate: adminOrderDate.value || DEFAULT_SETTINGS.orderDate,
-      dailyLimit: Math.max(Number(adminPackLimit.value || DEFAULT_SETTINGS.dailyLimit), totalPacks()),
-      ordersOpen: adminOrdersOpen.checked,
-    }),
-  }).then(refreshState).then(render).catch((error) => window.alert(error.message));
+  saveAdminSettings().catch((error) => window.alert(error.message));
+});
+
+downloadWeeklyReport.addEventListener("click", () => {
+  const range = weekRangeFor(state.settings.orderDate || new Date().toISOString().slice(0, 10));
+  generateSalesPdf("Weekly", range.start, range.end);
+});
+
+downloadMonthlyReport.addEventListener("click", () => {
+  const range = monthRangeFor(state.settings.orderDate || new Date().toISOString().slice(0, 10));
+  generateSalesPdf("Monthly", range.start, range.end);
 });
 
 ordersList.addEventListener("change", (event) => {
@@ -755,8 +993,23 @@ ordersList.addEventListener("change", (event) => {
   }).then(refreshState).then(render).catch((error) => window.alert(error.message));
 });
 
+ordersList.addEventListener("click", (event) => {
+  const receiptButton = event.target.closest("[data-receipt-open]");
+  if (!receiptButton) return;
+  const card = event.target.closest("[data-order-id]");
+  const order = state.orders.find((item) => item.id === card?.dataset.orderId);
+  if (!order?.receipt?.dataUrl) return;
+  openReceiptPreview(order);
+});
+
+receiptDialog?.addEventListener("click", (event) => {
+  if (event.target === receiptDialog) closeReceiptPreview();
+});
+
+receiptDialog?.addEventListener("close", closeReceiptPreview);
+
 clearOrdersButton.addEventListener("click", () => {
-  const confirmed = window.confirm("Clear all orders for this browser?");
+  const confirmed = window.confirm("Archive the current orders and start a new list? Sales records will be retained.");
   if (!confirmed) return;
   const password = window.prompt("Enter admin password to clear orders");
   if (password === null) return;

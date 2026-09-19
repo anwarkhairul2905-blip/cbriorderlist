@@ -187,6 +187,17 @@ h1 {
   object-fit: cover;
 }
 
+/* Show the complete portrait photo in the secondary Char Kway Teow frame. */
+.product-photo img.char-kway-teow-secondary {
+  object-fit: contain;
+  object-position: center;
+}
+
+/* Bring the plated serving into the centre of the wider hero frame. */
+.product-photo img.char-kway-teow-primary {
+  object-position: center 60%;
+}
+
 .product-photo.image-placeholder {
   display: grid;
   place-items: center;

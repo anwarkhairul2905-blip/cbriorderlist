@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Cart by Ryna Ismail Orders</title>
   <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="theme.css">
 </head>
 <body>
   <main class="page-shell">
@@ -13,26 +14,26 @@
         <img class="brand-logo" src="assets/cart-by-ryna-logo.png" alt="Cart by Ryna Ismail">
         <div>
           <p class="kicker">The amazing tastes of Malaysia to be discovered . Abu Dhabi weekly orders</p>
-          <h1>Nasi Lemak</h1>
-          <p class="intro">Place your order below. Payment is available by cash or bank transfer.</p>
+          <h1 id="menuTitle">Nasi Lemak</h1>
+          <p class="intro" id="menuIntro">Place your order below. Payment is available by cash or bank transfer.</p>
         </div>
       </div>
       <div class="status-pill" id="orderStatus">Orders open</div>
     </section>
 
     <section class="view active" id="customerView">
-      <section class="product-gallery" aria-label="Nasi lemak photos">
+      <section class="product-gallery" id="productGallery" aria-label="Menu photos">
         <figure class="product-photo large">
-          <img src="assets/packed-nasi-lemak.jpg" alt="Packed nasi lemak by Cart by Ryna Ismail">
+          <img id="menuImagePrimary" src="assets/packed-nasi-lemak.jpg" alt="Packed nasi lemak by Cart by Ryna Ismail">
         </figure>
         <figure class="product-photo">
-          <img src="assets/nasi-lemak-plate.jpeg" alt="Nasi lemak with egg, sambal, anchovies, peanuts, and cucumber">
+          <img id="menuImageSecondary" src="assets/nasi-lemak-plate.jpeg" alt="Nasi lemak with egg, sambal, anchovies, peanuts, and cucumber">
         </figure>
       </section>
 
       <section class="dietary-notice">
         <strong>Dietary notice</strong>
-        <p>Product contains rice, coconut cream, ginger, galangal, shallots, fried anchovies, peanuts, and cucumber. Please refer to your dietary restrictions before consuming.</p>
+        <p id="dietaryNoticeText">Product contains rice, coconut cream, ginger, galangal, shallots, fried anchovies, peanuts, and cucumber. Please refer to your dietary restrictions before consuming.</p>
       </section>
 
       <div class="capacity-strip">
@@ -61,6 +62,15 @@
               <button type="button" class="icon-button" id="increasePacks" aria-label="Increase packs">+</button>
             </div>
             <p class="hint">AED <span id="unitPrice">10</span> per pack. Maximum available for this order day: <span id="dailyLimit">120</span> packs.</p>
+          </div>
+
+          <div class="field bean-sprout-field" id="beanSproutField" hidden>
+            <label for="beanSproutPreference">Bean sprouts</label>
+            <select id="beanSproutPreference">
+              <option value="">Choose an option</option>
+              <option value="with">With bean sprouts</option>
+              <option value="without">Without bean sprouts</option>
+            </select>
           </div>
 
           <div class="field">
@@ -179,6 +189,14 @@
             <input id="adminOrderDate" type="date">
           </div>
           <div class="field">
+            <label for="adminActiveMenu">Customer menu</label>
+            <select id="adminActiveMenu">
+              <option value="nasi-lemak">Nasi Lemak</option>
+              <option value="char-kway-teow">Char Kway Teow</option>
+            </select>
+            <p class="hint">Customers see only the selected menu at this URL.</p>
+          </div>
+          <div class="field">
             <label for="adminPackLimit">Pack limit</label>
             <input id="adminPackLimit" type="number" min="1" max="200" value="120">
           </div>
@@ -209,7 +227,7 @@
               <strong id="adminSalesTotal">AED 0</strong>
             </div>
           </div>
-          <button class="secondary-button" type="button" id="clearOrdersButton">Clear orders</button>
+          <button class="secondary-button" type="button" id="clearOrdersButton">Archive &amp; clear current orders</button>
         </section>
       </section>
 
@@ -243,6 +261,7 @@
                 <strong id="weeklyUnpaidTotal">AED 0</strong>
               </div>
             </div>
+            <button class="secondary-button report-download-button" type="button" id="downloadWeeklyReport">Generate weekly PDF</button>
           </article>
 
           <article class="report-card">
@@ -269,6 +288,7 @@
                 <strong id="monthlyUnpaidTotal">AED 0</strong>
               </div>
             </div>
+            <button class="secondary-button report-download-button" type="button" id="downloadMonthlyReport">Generate monthly PDF</button>
           </article>
         </div>
       </section>
@@ -280,12 +300,33 @@
         </div>
         <div class="orders-list" id="ordersList"></div>
       </section>
+
+      <section class="orders-panel sales-history-panel">
+        <div class="orders-header">
+          <p class="panel-label">Sales archive</p>
+          <span id="salesHistoryCountLabel">0 archived orders</span>
+        </div>
+        <p class="hint">Archived orders remain available for sales reporting after the active order list is cleared.</p>
+        <div class="orders-list" id="salesHistoryList"></div>
+      </section>
     </section>
   </main>
+
+  <dialog class="receipt-dialog" id="receiptDialog" aria-label="Receipt preview">
+    <form class="receipt-dialog-frame" method="dialog">
+      <div class="receipt-dialog-header">
+        <strong id="receiptDialogTitle">Receipt preview</strong>
+        <button class="icon-button receipt-dialog-close" type="submit" aria-label="Close receipt preview">×</button>
+      </div>
+      <img class="receipt-dialog-image" id="receiptDialogImage" alt="Receipt preview">
+      <div class="receipt-dialog-meta" id="receiptDialogMeta"></div>
+    </form>
+  </dialog>
 
   <button class="admin-access-button" id="adminAccessButton" type="button">Admin</button>
 
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
