@@ -37,7 +37,7 @@ const MENUS = {
     requiresBeanSproutChoice: true,
     intro: "Place your order below. Payment is available by cash or bank transfer.",
     dietary: "Contains flat rice noodles, prawns, sesame oil, chilli paste, seafood base, soy sauce, bean sprouts, and chives. Please consult your own dietary restrictions before consuming.",
-    images: ["assets/char-kway-teow-hero.jpg?v=20260919b", "assets/char-kway-teow-detail.jpg?v=20260919d"],
+    images: ["assets/char-kway-teow-hero.jpg?v=20260919e", "assets/char-kway-teow-detail.jpg?v=20260919e"],
     alts: ["Char Kway Teow by Cart by Ryna Ismail", "Char Kway Teow serving"],
   },
 };
@@ -189,8 +189,6 @@ function applyMenuPresentation() {
     if (!image || !figure) return;
     const source = menu.images[index];
     image.alt = menu.alts[index];
-    image.classList.toggle("char-kway-teow-primary", menu === MENUS["char-kway-teow"] && index === 0);
-    image.classList.toggle("char-kway-teow-secondary", menu === MENUS["char-kway-teow"] && index === 1);
     image.onerror = () => {
       figure.classList.add("image-placeholder");
       figure.textContent = `${menu.title} photo coming soon`;
