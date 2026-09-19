@@ -44,6 +44,9 @@ That file is ignored by git, so each server keeps its own live order data.
 ## Production notes
 
 - Set `ADMIN_PASSWORD` on the server.
+- To receive new-order Telegram alerts, set `TELEGRAM_BOT_TOKEN` and
+  `TELEGRAM_ADMIN_CHAT_ID` as Railway service variables. The admin must first
+  open the bot and send it a message so Telegram permits it to send alerts.
 - Set the site or server to public access if customers need to open it directly.
 - If you move the app to another host, make sure the `start` script runs `node server.js`.
 

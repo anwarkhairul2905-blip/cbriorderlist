@@ -11,6 +11,8 @@ const STORE_PATH = path.join(DATA_DIR, "store.json");
 const PORT = Number(process.env.PORT || 8788);
 const HOST = process.env.HOST || (process.env.PORT ? "0.0.0.0" : "127.0.0.1");
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "ryna2026";
+const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || "";
+const TELEGRAM_ADMIN_CHAT_ID = process.env.TELEGRAM_ADMIN_CHAT_ID || "";
 const SESSION_COOKIE = "nasi_admin_session";
 const RECEIPT_PREPAY_DAYS = 7;
 const MAX_ORDER_PACKS = 120;
@@ -63,6 +65,39 @@ function sendJson(res, statusCode, payload, headers = {}) {
 function sendText(res, statusCode, body, headers = {}) {
   res.writeHead(statusCode, { "Content-Type": "text/plain; charset=utf-8", ...headers });
   res.end(body);
+}
+
+async function notifyAdminOfNewOrder(order) {
+  if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_ADMIN_CHAT_ID) return;
+
+  const menuName = order.menuKey === "char-kway-teow" ? "Char Kway Teow" : "Nasi Lemak";
+  const beanSproutNote = order.beanSproutPreference
+    ? `\nBean sprouts: ${order.beanSproutPreference === "with" ? "With" : "Without"}`
+    : "";
+  const text = [
+    "🛎️ New CBRI order",
+    "",
+    `Order: ${order.id}`,
+    `Customer: ${order.name}`,
+    `Phone: ${order.phone}`,
+    `Menu: ${menuName}`,
+    `Packs: ${order.packs}`,
+    `Total: AED ${Number(order.totalAmount).toFixed(2)}`,
+    `Pickup: ${order.pickupTime}`,
+    `Payment: ${order.paymentMethod}`,
+  ].join("\n") + beanSproutNote;
+
+  try {
+    const response = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat_id: TELEGRAM_ADMIN_CHAT_ID, text }),
+    });
+    if (!response.ok) console.error(`Telegram order alert failed with status ${response.status}`);
+  } catch (error) {
+    // A notification failure must never prevent the customer order from being saved.
+    console.error("Telegram order alert failed", error.message);
+  }
 }
 
 function parseCookies(header) {
@@ -435,6 +470,8 @@ async function handleCreateOrder(req, res) {
     sendJson(res, 409, { error: errorMessage });
     return;
   }
+
+  void notifyAdminOfNewOrder(createdOrder);
 
   sendJson(res, 201, {
     ok: true,
