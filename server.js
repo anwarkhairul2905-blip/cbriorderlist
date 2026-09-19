@@ -4,7 +4,9 @@ const path = require("path");
 const crypto = require("crypto");
 
 const ROOT_DIR = __dirname;
-const DATA_DIR = path.join(ROOT_DIR, "data");
+// Railway exposes this path when a persistent Volume is attached. Local runs
+// continue to use the repository's data directory.
+const DATA_DIR = process.env.RAILWAY_VOLUME_MOUNT_PATH || process.env.DATA_DIR || path.join(ROOT_DIR, "data");
 const STORE_PATH = path.join(DATA_DIR, "store.json");
 const PORT = Number(process.env.PORT || 8788);
 const HOST = process.env.HOST || (process.env.PORT ? "0.0.0.0" : "127.0.0.1");
@@ -118,7 +120,8 @@ async function ensureDataDir() {
 
 function normalizeSettings(settings = {}) {
   const normalized = { ...DEFAULT_SETTINGS, ...settings };
-  normalized.dailyLimit = Math.max(Number(normalized.dailyLimit || DEFAULT_SETTINGS.dailyLimit), 1);
+  const dailyLimit = Number(normalized.dailyLimit);
+  normalized.dailyLimit = Number.isFinite(dailyLimit) ? Math.max(dailyLimit, 0) : DEFAULT_SETTINGS.dailyLimit;
   normalized.ordersOpen = Boolean(normalized.ordersOpen);
   normalized.activeMenu = MENU_KEYS.has(String(normalized.activeMenu)) ? String(normalized.activeMenu) : DEFAULT_SETTINGS.activeMenu;
   normalized.orderDate = String(normalized.orderDate || DEFAULT_SETTINGS.orderDate).slice(0, 10);
@@ -350,7 +353,8 @@ async function handleSettings(req, res) {
   const body = await parseJsonBody(req);
   await queueWrite(async () => {
     store.settings.orderDate = String(body.orderDate || store.settings.orderDate).slice(0, 10);
-    store.settings.dailyLimit = Math.max(Number(body.dailyLimit || store.settings.dailyLimit), totalPacks(store.orders));
+    const requestedLimit = Number(body.dailyLimit);
+    store.settings.dailyLimit = Math.max(Number.isFinite(requestedLimit) ? requestedLimit : store.settings.dailyLimit, totalPacks(store.orders));
     store.settings.ordersOpen = Boolean(body.ordersOpen);
     if (MENU_KEYS.has(String(body.activeMenu))) store.settings.activeMenu = String(body.activeMenu);
   });
@@ -359,11 +363,13 @@ async function handleSettings(req, res) {
 
 function validateOrder(body, activeMenu = DEFAULT_SETTINGS.activeMenu) {
   const name = String(body.name || "").trim();
+  const phone = String(body.phone || "").trim();
   const packs = Number.parseInt(body.packs, 10);
   const pickupTime = String(body.pickupTime || "").trim();
   const paymentMethod = String(body.paymentMethod || "Cash").trim();
   const beanSproutPreference = String(body.beanSproutPreference || "").trim();
   if (!name) return { ok: false, error: "Name is required" };
+  if (!/^[+()\-\s\d]{7,20}$/.test(phone) || !/\d/.test(phone)) return { ok: false, error: "A valid phone number is required" };
   if (!Number.isFinite(packs) || packs < 1) return { ok: false, error: "Pack count is required" };
   if (packs > MAX_ORDER_PACKS) return { ok: false, error: "Pack count too high" };
   if (!pickupTime) return { ok: false, error: "Pickup time is required" };
@@ -371,7 +377,7 @@ function validateOrder(body, activeMenu = DEFAULT_SETTINGS.activeMenu) {
   if (activeMenu === "char-kway-teow" && !BEAN_SPROUT_OPTIONS.has(beanSproutPreference)) {
     return { ok: false, error: "Choose whether you want bean sprouts" };
   }
-  return { ok: true, name, packs, pickupTime, paymentMethod, beanSproutPreference: activeMenu === "char-kway-teow" ? beanSproutPreference : "" };
+  return { ok: true, name, phone, packs, pickupTime, paymentMethod, beanSproutPreference: activeMenu === "char-kway-teow" ? beanSproutPreference : "" };
 }
 
 async function handleCreateOrder(req, res) {
@@ -409,6 +415,7 @@ async function handleCreateOrder(req, res) {
       id: `ORD-${Date.now()}-${crypto.randomBytes(3).toString("hex")}`,
       menuKey: store.settings.activeMenu,
       name: validation.name,
+      phone: validation.phone,
       packs: validation.packs,
       unitPrice: MENU_PRICES_AED[store.settings.activeMenu],
       totalAmount: validation.packs * MENU_PRICES_AED[store.settings.activeMenu],

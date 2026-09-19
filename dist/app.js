@@ -57,6 +57,7 @@ const tabButtons = document.querySelectorAll(".tab-button");
 const adminAccessButton = document.getElementById("adminAccessButton");
 const form = document.getElementById("orderForm");
 const nameInput = document.getElementById("customerName");
+const phoneInput = document.getElementById("customerPhone");
 const packInput = document.getElementById("packCount");
 const pickupTimeInput = document.getElementById("pickupTime");
 const beanSproutField = document.getElementById("beanSproutField");
@@ -171,7 +172,7 @@ function applyServerState(payload = {}) {
     totalPacks: Number(payload.summary?.totalPacks || 0),
     paidPacks: Number(payload.summary?.paidPacks || 0),
     unpaidPacks: Number(payload.summary?.unpaidPacks || 0),
-    remainingPacks: Number(payload.summary?.remainingPacks || settings.dailyLimit),
+    remainingPacks: Number(payload.summary?.remainingPacks ?? settings.dailyLimit),
   };
 }
 
@@ -558,7 +559,7 @@ function generateSalesPdf(periodLabel, startDate, endDate) {
       const menuName = MENUS[order.menuKey || "nasi-lemak"]?.title || "Nasi Lemak";
       const beanSproutNote = order.beanSproutPreference ? `, ${order.beanSproutPreference === "with" ? "with" : "without"} bean sprouts` : "";
       addLine(`${index + 1}. ${order.orderDate || "No date"} · ${order.name || "Customer"}`, { bold: true, gap: 0.5 });
-      addLine(`${menuName}${beanSproutNote} · ${order.packs || 0} pack(s) · ${formatAed(orderTotal(order))} · ${order.paymentMethod || "Payment not recorded"} · ${order.paid ? "Paid" : "Unpaid"} · Pickup: ${order.pickupTime || "Not recorded"} · ${order.recordSource}`, { gap: 2.5 });
+      addLine(`${menuName}${beanSproutNote} · ${order.packs || 0} pack(s) · ${formatAed(orderTotal(order))} · ${order.paymentMethod || "Payment not recorded"} · ${order.paid ? "Paid" : "Unpaid"} · Phone: ${order.phone || "Not recorded"} · Pickup: ${order.pickupTime || "Not recorded"} · ${order.recordSource}`, { gap: 2.5 });
     });
   }
 
@@ -633,7 +634,7 @@ function updateSummary() {
 }
 
 function renderCapacity() {
-  const limit = Number(state.settings.dailyLimit || DEFAULT_SETTINGS.dailyLimit);
+  const limit = Number(state.settings.dailyLimit ?? DEFAULT_SETTINGS.dailyLimit);
   const ordered = totalPacks();
   const remaining = remainingCapacity();
   const open = state.settings.ordersOpen && remaining > 0;
@@ -690,7 +691,7 @@ function saveAdminSettings() {
     method: "PATCH",
     body: JSON.stringify({
       orderDate: adminOrderDate.value || DEFAULT_SETTINGS.orderDate,
-      dailyLimit: Math.max(Number(adminPackLimit.value || DEFAULT_SETTINGS.dailyLimit), totalPacks()),
+      dailyLimit: Math.max(Number(adminPackLimit.value), totalPacks()),
       ordersOpen: adminOrdersOpen.checked,
       activeMenu: adminActiveMenu.value,
     }),
@@ -754,6 +755,7 @@ function renderOrders() {
     <article class="order-card" data-order-id="${order.id}">
       <div>
         <strong>${escapeHtml(order.name)}</strong>
+        ${order.phone ? `<p>Phone: ${escapeHtml(order.phone)}</p>` : ""}
         <p>${escapeHtml(MENUS[order.menuKey || "nasi-lemak"]?.title || "Nasi Lemak")} · ${order.packs} pack${order.packs === 1 ? "" : "s"} · ${escapeHtml(order.paymentMethod)} · ${formatAed(orderTotal(order))}</p>
         ${order.beanSproutPreference ? `<p>${order.beanSproutPreference === "with" ? "With" : "Without"} bean sprouts</p>` : ""}
         <p>Pickup: ${escapeHtml(order.pickupTime || "Not selected")}</p>
@@ -793,6 +795,7 @@ function renderSalesHistory() {
       <article class="order-card archived-order-card">
         <div>
           <strong>${escapeHtml(order.name)}</strong>
+          ${order.phone ? `<p>Phone: ${escapeHtml(order.phone)}</p>` : ""}
           <p>${escapeHtml(menuName)} · ${order.packs} pack${order.packs === 1 ? "" : "s"}${beanSproutNote} · ${escapeHtml(order.paymentMethod)} · ${formatAed(orderTotal(order))}</p>
           <p>Order day: ${escapeHtml(order.orderDate || "Not recorded")} · Pickup: ${escapeHtml(order.pickupTime || "Not selected")}</p>
           <small>${escapeHtml(archivedLabel)}</small>
@@ -931,6 +934,7 @@ form.addEventListener("submit", async (event) => {
 
     const order = {
       name: nameInput.value.trim(),
+      phone: phoneInput.value.trim(),
       packs,
       pickupTime: pickupTimeInput.value,
       beanSproutPreference: beanSproutPreference.value,
