@@ -101,6 +101,8 @@ const monthlyPackCount = document.getElementById("monthlyPackCount");
 const monthlySalesTotal = document.getElementById("monthlySalesTotal");
 const monthlyPaidTotal = document.getElementById("monthlyPaidTotal");
 const monthlyUnpaidTotal = document.getElementById("monthlyUnpaidTotal");
+const downloadWeeklyReport = document.getElementById("downloadWeeklyReport");
+const downloadMonthlyReport = document.getElementById("downloadMonthlyReport");
 const clearOrdersButton = document.getElementById("clearOrdersButton");
 const ordersList = document.getElementById("ordersList");
 const orderCountLabel = document.getElementById("orderCountLabel");
@@ -484,7 +486,7 @@ function monthRangeFor(dateKeyValue) {
 }
 
 function summarizeOrders(startDate, endDate) {
-  return [...state.orders, ...state.salesHistory].reduce((summary, order) => {
+  return salesRecordsForRange(startDate, endDate).reduce((summary, order) => {
     const currentDate = orderDateKey(order);
     if (!currentDate || currentDate < startDate || currentDate > endDate) return summary;
     const total = orderTotal(order);
@@ -495,6 +497,72 @@ function summarizeOrders(startDate, endDate) {
     else summary.unpaid += total;
     return summary;
   }, { orders: 0, packs: 0, sales: 0, paid: 0, unpaid: 0 });
+}
+
+function salesRecordsForRange(startDate, endDate) {
+  return [
+    ...state.orders.map((order) => ({ ...order, recordSource: "Active" })),
+    ...state.salesHistory.map((order) => ({ ...order, recordSource: "Archived" })),
+  ].filter((order) => {
+    const currentDate = orderDateKey(order);
+    return currentDate && currentDate >= startDate && currentDate <= endDate;
+  }).sort((a, b) => {
+    const dateDiff = String(a.orderDate || "").localeCompare(String(b.orderDate || ""));
+    if (dateDiff) return dateDiff;
+    return new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime();
+  });
+}
+
+function generateSalesPdf(periodLabel, startDate, endDate) {
+  const jsPdf = window.jspdf?.jsPDF;
+  if (!jsPdf) {
+    window.alert("The PDF generator is still loading. Please try again in a moment.");
+    return;
+  }
+
+  const records = salesRecordsForRange(startDate, endDate);
+  const summary = summarizeOrders(startDate, endDate);
+  const document = new jsPdf({ unit: "mm", format: "a4" });
+  const pageWidth = document.internal.pageSize.getWidth();
+  const pageHeight = document.internal.pageSize.getHeight();
+  const margin = 14;
+  let y = 18;
+
+  const addPageIfNeeded = (height = 8) => {
+    if (y + height <= pageHeight - 14) return;
+    document.addPage();
+    y = 16;
+  };
+  const addLine = (text, options = {}) => {
+    const size = options.size || 9;
+    document.setFontSize(size);
+    document.setFont(options.bold ? "helvetica" : "helvetica", options.bold ? "bold" : "normal");
+    const lines = document.splitTextToSize(String(text), pageWidth - margin * 2);
+    addPageIfNeeded(lines.length * (size * 0.45 + 1));
+    document.text(lines, margin, y);
+    y += lines.length * (size * 0.45 + 1) + (options.gap || 1.5);
+  };
+
+  addLine("Cart by Ryna Ismail", { size: 16, bold: true, gap: 3 });
+  addLine(`${periodLabel} sales report`, { size: 13, bold: true, gap: 2 });
+  addLine(`Period: ${startDate} to ${endDate}`);
+  addLine(`Generated: ${new Date().toLocaleString("en-AE")}`, { gap: 4 });
+  addLine(`Orders: ${summary.orders}   |   Packs: ${summary.packs}   |   Sales: ${formatAed(summary.sales)}   |   Paid: ${formatAed(summary.paid)}   |   Unpaid: ${formatAed(summary.unpaid)}`, { bold: true, gap: 5 });
+  addLine("Order records", { size: 11, bold: true, gap: 3 });
+
+  if (!records.length) {
+    addLine("No sales records were found for this period.");
+  } else {
+    records.forEach((order, index) => {
+      const menuName = MENUS[order.menuKey || "nasi-lemak"]?.title || "Nasi Lemak";
+      const beanSproutNote = order.beanSproutPreference ? `, ${order.beanSproutPreference === "with" ? "with" : "without"} bean sprouts` : "";
+      addLine(`${index + 1}. ${order.orderDate || "No date"} · ${order.name || "Customer"}`, { bold: true, gap: 0.5 });
+      addLine(`${menuName}${beanSproutNote} · ${order.packs || 0} pack(s) · ${formatAed(orderTotal(order))} · ${order.paymentMethod || "Payment not recorded"} · ${order.paid ? "Paid" : "Unpaid"} · Pickup: ${order.pickupTime || "Not recorded"} · ${order.recordSource}`, { gap: 2.5 });
+    });
+  }
+
+  const filename = `cart-by-ryna-${periodLabel.toLowerCase()}-sales-${startDate}-to-${endDate}.pdf`;
+  document.save(filename);
 }
 
 function updateTabs(targetId) {
@@ -895,6 +963,16 @@ form.addEventListener("submit", async (event) => {
 settingsForm.addEventListener("submit", (event) => {
   event.preventDefault();
   saveAdminSettings().catch((error) => window.alert(error.message));
+});
+
+downloadWeeklyReport.addEventListener("click", () => {
+  const range = weekRangeFor(state.settings.orderDate || new Date().toISOString().slice(0, 10));
+  generateSalesPdf("Weekly", range.start, range.end);
+});
+
+downloadMonthlyReport.addEventListener("click", () => {
+  const range = monthRangeFor(state.settings.orderDate || new Date().toISOString().slice(0, 10));
+  generateSalesPdf("Monthly", range.start, range.end);
 });
 
 ordersList.addEventListener("change", (event) => {

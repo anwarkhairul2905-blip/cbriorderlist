@@ -608,6 +608,10 @@ input:focus {
   padding: 16px;
 }
 
+.report-download-button {
+  margin-top: 16px;
+}
+
 .report-title {
   margin: 0 0 12px;
   color: var(--accent-strong);
