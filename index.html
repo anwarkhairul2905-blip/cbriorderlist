@@ -227,7 +227,7 @@
               <strong id="adminSalesTotal">AED 0</strong>
             </div>
           </div>
-          <button class="secondary-button" type="button" id="clearOrdersButton">Clear orders</button>
+          <button class="secondary-button" type="button" id="clearOrdersButton">Archive &amp; clear current orders</button>
         </section>
       </section>
 
@@ -297,6 +297,15 @@
           <span id="orderCountLabel">0 orders</span>
         </div>
         <div class="orders-list" id="ordersList"></div>
+      </section>
+
+      <section class="orders-panel sales-history-panel">
+        <div class="orders-header">
+          <p class="panel-label">Sales archive</p>
+          <span id="salesHistoryCountLabel">0 archived orders</span>
+        </div>
+        <p class="hint">Archived orders remain available for sales reporting after the active order list is cleared.</p>
+        <div class="orders-list" id="salesHistoryList"></div>
       </section>
     </section>
   </main>

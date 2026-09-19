@@ -33,6 +33,7 @@ const DEFAULT_SETTINGS = {
 const STORE_TEMPLATE = {
   settings: { ...DEFAULT_SETTINGS },
   orders: [],
+  salesHistory: [],
 };
 
 let store = null;
@@ -131,7 +132,8 @@ function normalizeSettings(settings = {}) {
 function normalizeStore(input) {
   const settings = normalizeSettings(input && input.settings);
   const orders = Array.isArray(input && input.orders) ? input.orders : [];
-  return { settings, orders };
+  const salesHistory = Array.isArray(input && input.salesHistory) ? input.salesHistory : [];
+  return { settings, orders, salesHistory };
 }
 
 async function loadStore() {
@@ -200,6 +202,7 @@ function adminState() {
   return {
     ...publicState(),
     orders: store.orders,
+    salesHistory: store.salesHistory,
   };
 }
 
@@ -459,6 +462,8 @@ async function handleClearOrders(req, res) {
     return;
   }
   await queueWrite(async () => {
+    const archivedAt = new Date().toISOString();
+    store.salesHistory.unshift(...store.orders.map((order) => ({ ...order, archivedAt })));
     store.orders = [];
   });
   sendJson(res, 200, { ok: true, summary: buildSummary() });

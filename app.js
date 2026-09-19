@@ -104,6 +104,8 @@ const monthlyUnpaidTotal = document.getElementById("monthlyUnpaidTotal");
 const clearOrdersButton = document.getElementById("clearOrdersButton");
 const ordersList = document.getElementById("ordersList");
 const orderCountLabel = document.getElementById("orderCountLabel");
+const salesHistoryList = document.getElementById("salesHistoryList");
+const salesHistoryCountLabel = document.getElementById("salesHistoryCountLabel");
 const accountHolderValue = document.getElementById("accountHolderValue");
 const bankNameValue = document.getElementById("bankNameValue");
 const ibanValue = document.getElementById("ibanValue");
@@ -142,6 +144,7 @@ function createInitialState() {
   return {
     settings: { ...DEFAULT_SETTINGS },
     orders: [],
+    salesHistory: [],
     summary: {
       orderCount: 0,
       totalPacks: 0,
@@ -160,6 +163,7 @@ function applyServerState(payload = {}) {
   settings.accountNumber = EXPECTED_ACCOUNT_NUMBER;
   state.settings = settings;
   state.orders = Array.isArray(payload.orders) ? payload.orders : [];
+  state.salesHistory = Array.isArray(payload.salesHistory) ? payload.salesHistory : [];
   state.summary = {
     orderCount: Number(payload.summary?.orderCount || state.orders.length || 0),
     totalPacks: Number(payload.summary?.totalPacks || 0),
@@ -480,7 +484,7 @@ function monthRangeFor(dateKeyValue) {
 }
 
 function summarizeOrders(startDate, endDate) {
-  return state.orders.reduce((summary, order) => {
+  return [...state.orders, ...state.salesHistory].reduce((summary, order) => {
     const currentDate = orderDateKey(order);
     if (!currentDate || currentDate < startDate || currentDate > endDate) return summary;
     const total = orderTotal(order);
@@ -704,6 +708,32 @@ function renderOrders() {
   `).join("");
 }
 
+function renderSalesHistory() {
+  const records = [...state.salesHistory].sort((a, b) => new Date(b.archivedAt || b.createdAt).getTime() - new Date(a.archivedAt || a.createdAt).getTime());
+  salesHistoryCountLabel.textContent = `${records.length} archived order${records.length === 1 ? "" : "s"}`;
+  if (!records.length) {
+    salesHistoryList.innerHTML = `<div class="empty-state">No archived sales yet.</div>`;
+    return;
+  }
+
+  salesHistoryList.innerHTML = records.map((order) => {
+    const menuName = MENUS[order.menuKey || "nasi-lemak"]?.title || "Nasi Lemak";
+    const beanSproutNote = order.beanSproutPreference ? ` · ${order.beanSproutPreference === "with" ? "With" : "Without"} bean sprouts` : "";
+    const archivedLabel = order.archivedAt ? `Archived ${formatTime(order.archivedAt)}` : "Archived sales record";
+    return `
+      <article class="order-card archived-order-card">
+        <div>
+          <strong>${escapeHtml(order.name)}</strong>
+          <p>${escapeHtml(menuName)} · ${order.packs} pack${order.packs === 1 ? "" : "s"}${beanSproutNote} · ${escapeHtml(order.paymentMethod)} · ${formatAed(orderTotal(order))}</p>
+          <p>Order day: ${escapeHtml(order.orderDate || "Not recorded")} · Pickup: ${escapeHtml(order.pickupTime || "Not selected")}</p>
+          <small>${escapeHtml(archivedLabel)}</small>
+        </div>
+        <div class="order-actions"><span>${order.paid ? "Paid" : "Unpaid"}</span></div>
+      </article>
+    `;
+  }).join("");
+}
+
 function render() {
   applyMenuPresentation();
   renderCapacity();
@@ -711,6 +741,7 @@ function render() {
   renderAdminMetrics();
   renderSalesReports();
   renderOrders();
+  renderSalesHistory();
   updateSummary();
 }
 
@@ -898,7 +929,7 @@ receiptDialog?.addEventListener("click", (event) => {
 receiptDialog?.addEventListener("close", closeReceiptPreview);
 
 clearOrdersButton.addEventListener("click", () => {
-  const confirmed = window.confirm("Clear all orders for this browser?");
+  const confirmed = window.confirm("Archive the current orders and start a new list? Sales records will be retained.");
   if (!confirmed) return;
   const password = window.prompt("Enter admin password to clear orders");
   if (password === null) return;
