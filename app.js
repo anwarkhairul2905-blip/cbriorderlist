@@ -36,7 +36,7 @@ const MENUS = {
     price: MENU_PRICES_AED["char-kway-teow"],
     requiresBeanSproutChoice: true,
     intro: "Place your order below. Payment is available by cash or bank transfer.",
-    dietary: "Please provide the Char Kway Teow ingredients and dietary notice before opening this menu to customers.",
+    dietary: "Contains flat rice noodles, prawns, sesame oil, chilli paste, seafood base, soy sauce, bean sprouts, and chives. Please consult your own dietary restrictions before consuming.",
     images: ["assets/char-kway-teow-hero.jpg", "assets/char-kway-teow-detail.jpg"],
     alts: ["Char Kway Teow by Cart by Ryna Ismail", "Char Kway Teow serving"],
   },
