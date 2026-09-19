@@ -189,6 +189,7 @@ function applyMenuPresentation() {
     if (!image || !figure) return;
     const source = menu.images[index];
     image.alt = menu.alts[index];
+    image.classList.toggle("char-kway-teow-secondary", menu === MENUS["char-kway-teow"] && index === 1);
     image.onerror = () => {
       figure.classList.add("image-placeholder");
       figure.textContent = `${menu.title} photo coming soon`;
