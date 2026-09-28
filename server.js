@@ -8,6 +8,7 @@ const ROOT_DIR = __dirname;
 // continue to use the repository's data directory.
 const DATA_DIR = process.env.RAILWAY_VOLUME_MOUNT_PATH || process.env.DATA_DIR || path.join(ROOT_DIR, "data");
 const STORE_PATH = path.join(DATA_DIR, "store.json");
+const STORE_BACKUP_PATH = path.join(DATA_DIR, "store.backup.json");
 const PORT = Number(process.env.PORT || 8788);
 const HOST = process.env.HOST || (process.env.PORT ? "0.0.0.0" : "127.0.0.1");
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "ryna2026";
@@ -178,14 +179,34 @@ async function loadStore() {
   try {
     const raw = await fs.readFile(STORE_PATH, "utf8");
     return normalizeStore(JSON.parse(raw));
-  } catch {
-    return normalizeStore(STORE_TEMPLATE);
+  } catch (primaryError) {
+    try {
+      const backup = await fs.readFile(STORE_BACKUP_PATH, "utf8");
+      console.warn(`Could not load ${STORE_PATH}; restoring the last saved backup.`);
+      return normalizeStore(JSON.parse(backup));
+    } catch {
+      if (primaryError.code !== "ENOENT") {
+        console.error(`Could not load order store: ${primaryError.message}`);
+      }
+      return normalizeStore(STORE_TEMPLATE);
+    }
   }
 }
 
 async function saveStore() {
   await ensureDataDir();
-  await fs.writeFile(STORE_PATH, `${JSON.stringify(store, null, 2)}\n`, "utf8");
+  const serialized = `${JSON.stringify(store, null, 2)}\n`;
+  const temporaryPath = `${STORE_PATH}.${process.pid}.tmp`;
+
+  // Never replace the live store with a partially-written file. Keep the
+  // previous complete version as a local recovery point as well.
+  await fs.writeFile(temporaryPath, serialized, "utf8");
+  try {
+    await fs.copyFile(STORE_PATH, STORE_BACKUP_PATH);
+  } catch (error) {
+    if (error.code !== "ENOENT") throw error;
+  }
+  await fs.rename(temporaryPath, STORE_PATH);
 }
 
 function queueWrite(mutator) {
@@ -563,6 +584,11 @@ async function requestListener(req, res) {
 async function start() {
   await ensureDataDir();
   store = await loadStore();
+  if (!process.env.RAILWAY_VOLUME_MOUNT_PATH && !process.env.DATA_DIR) {
+    console.warn(
+      `Order data is using ${DATA_DIR}. Configure a persistent volume and set DATA_DIR to its mount path in production.`
+    );
+  }
   const server = http.createServer((req, res) => {
     requestListener(req, res).catch((error) => {
       console.error(error);

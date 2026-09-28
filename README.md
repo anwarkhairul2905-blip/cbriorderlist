@@ -40,9 +40,16 @@ Orders and settings are stored in:
 `data/store.json`
 
 That file is ignored by git, so each server keeps its own live order data.
+The server writes atomically and keeps the prior complete version in
+`data/store.backup.json` in case a write is interrupted.
 
 ## Production notes
 
+- Attach a persistent volume before accepting orders. On Railway, mount a
+  Volume (for example at `/data`) and set `DATA_DIR=/data`. Railway's
+  `RAILWAY_VOLUME_MOUNT_PATH` is also used automatically when available.
+  Without a persistent volume, a restart or redeploy recreates the default
+  open-order settings and removes the live order list.
 - Set `ADMIN_PASSWORD` on the server.
 - To receive new-order Telegram alerts, set `TELEGRAM_BOT_TOKEN` and
   `TELEGRAM_ADMIN_CHAT_ID` as Railway service variables. The admin must first
