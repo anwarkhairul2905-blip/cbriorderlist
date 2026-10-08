@@ -780,10 +780,16 @@ function renderOrders() {
 }
 
 function renderSalesHistory() {
-  const records = [...state.salesHistory].sort((a, b) => new Date(b.archivedAt || b.createdAt).getTime() - new Date(a.archivedAt || a.createdAt).getTime());
-  salesHistoryCountLabel.textContent = `${records.length} archived order${records.length === 1 ? "" : "s"}`;
+  // The calendar's Order day is the archive filter. This keeps a new order day
+  // clear of records from previous lists while still allowing any prior day to
+  // be reviewed by selecting it in the calendar.
+  const selectedDate = adminOrderDate.value || state.settings.orderDate;
+  const records = state.salesHistory
+    .filter((order) => orderDateKey(order) === selectedDate)
+    .sort((a, b) => new Date(b.archivedAt || b.createdAt).getTime() - new Date(a.archivedAt || a.createdAt).getTime());
+  salesHistoryCountLabel.textContent = `${records.length} archived order${records.length === 1 ? "" : "s"} for ${selectedDate || "selected day"}`;
   if (!records.length) {
-    salesHistoryList.innerHTML = `<div class="empty-state">No archived sales yet.</div>`;
+    salesHistoryList.innerHTML = `<div class="empty-state">No archived orders for ${escapeHtml(selectedDate || "this day")}.</div>`;
     return;
   }
 
@@ -969,6 +975,8 @@ settingsForm.addEventListener("submit", (event) => {
   event.preventDefault();
   saveAdminSettings().catch((error) => window.alert(error.message));
 });
+
+adminOrderDate.addEventListener("change", renderSalesHistory);
 
 downloadWeeklyReport.addEventListener("click", () => {
   const range = weekRangeFor(state.settings.orderDate || new Date().toISOString().slice(0, 10));
